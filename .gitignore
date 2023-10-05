@@ -1,0 +1,7 @@
+.venv
+actors/
+images/
+__pycache__/
+ss.png
+target.png
+tasks.png
