@@ -1,5 +1,6 @@
 .venv
-actors/
+actors/*/*.png
+actors/*/notes.txt
 images/
 __pycache__/
 ss.png
