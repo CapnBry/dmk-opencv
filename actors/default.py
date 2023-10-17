@@ -17,8 +17,12 @@ def clickGo(grabber, bounds, loc):
         grabber.log('ACT', f'{Fore.YELLOW}Click did not register{Fore.WHITE}. Found {maxloc}={maxval:0.3f}')
 
 def abortSpam(grabber, fname):
+    # Get any reason from the file
     with open(fname, 'r') as f:
         reason = f.read()
+    # Make sure this doesn't fire again
+    os.remove(fname)
+    # Spam
     grabber.log('ACT', Fore.YELLOW +
         '\n***********************************************************\n' +
         '*                                                         *\n' +
@@ -72,7 +76,7 @@ def assignTask(actor, grabber, forceTask=None) -> bool:
 
         if maxval > 0.88:
             maxloc = (int(grabber.width*0.92), bounds[1] + maxloc[1] + int(grabber.height*0.137))
-            wish = 'wish' if do_wish else grabber.image_to_string(target).strip()
+            wish = 'wish' if do_wish else grabber.imgToStr(target).strip()
             grabber.log('ACT', f'Clicking {maxloc}={maxval:0.3f} after {x} scrolls ({wish})')
 
             clickGo(grabber, bounds, maxloc)
@@ -86,7 +90,12 @@ def assignTask(actor, grabber, forceTask=None) -> bool:
         grabber.scroll(-423, bounds[0], bounds[1])
         time.sleep(0.100)
 
-    grabber.log('ERR', ['%0.3f' % y for y in search_history])
+    # Wish not found, must be stale
+    if do_wish:
+        os.remove(os.path.join(path_base, 'wish.txt'))
+
+    #grabber.log('ERR', f'Max={max(search_history):0.3f} {["%0.3f" % y for y in search_history]})
+    grabber.log('ERR', ["%0.3f" % y for y in search_history])
     cv.imwrite('tasks.png', tasks)
     cv.imwrite('target.png', target)
 

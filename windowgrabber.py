@@ -13,7 +13,7 @@ import pytesseract
 from colorama import Fore, Back, Style
 from imutils.object_detection import non_max_suppression
 
-class WindowGrabber:
+class WindowGrabber(object):
     def __init__(self, WndClass=None, WndTitle=None, ForceSize=None):
         pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
@@ -54,8 +54,10 @@ class WindowGrabber:
                 win32con.SWP_NOMOVE + win32con.SWP_NOZORDER)
             self._updateWndPlace(hWnd)
 
-    def activate(self) -> None:
+    def activate(self, interval=None) -> None:
         win32gui.SetForegroundWindow(self._gethWnd())
+        if interval:
+            time.sleep(interval)
 
     @property
     def isRunning(self) -> bool:
@@ -201,9 +203,9 @@ class WindowGrabber:
             pick = map(lambda r: (r[0], r[1]), pick)
         return list(pick)
 
-    def log(self, facil, msg):
+    def log(self, facil, msg) -> None:
         t = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         print(f'{Style.BRIGHT}{t}{Style.NORMAL} [{Style.DIM}{facil}{Style.NORMAL}] {msg}')
 
-    def image_to_string(self, img) -> str:
-        return pytesseract.image_to_string(img)
+    def imgToStr(self, img) -> str:
+        return pytesseract.image_to_string(img).strip()

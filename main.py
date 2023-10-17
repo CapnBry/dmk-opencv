@@ -2,13 +2,15 @@ import sys
 import os
 import time
 import datetime
+import re
 import numpy as np
 import cv2 as cv
 import pyautogui
 import random
 import importlib
-from windowgrabber import WindowGrabber
+from dmkgrabber import DmkGrabber
 from colorama import Fore, Back, Style
+import webui_main
 
 STANDALONE_CLICKS = [
     # latency sensitive items go first
@@ -39,6 +41,7 @@ PERIODIC_CLICKS = [
     'collect-calendar',
     'claim-gold',
     'claim-milestone',
+    'claim-rewardclaimed',
     'levelup-char-tickle',
     'watchad-gem-tickle',
     'tasks-reward-tickle',
@@ -48,14 +51,12 @@ PERIODIC_CLICKS = [
     'close-popupad-03',
     'watchad-bronze',
     'watchad-magic',
-    'watchad-mystery-radiant',
+    #'watchad-mystery-radiant',
     'quest-end-reward',
     #'aristo-tickle',
     'close-missed-ad',
     'close-chestmenu', # chestmenu and charactermenu (should come last!)
 ]
-
-config = {}
 
 def clickMoveUp(grabber, loc) -> bool:
     grabber.click(loc[0], loc[1], interval=0.033)
@@ -160,12 +161,13 @@ def clickAristoTickle(grabber, loc) -> bool:
     return True
 
 LOOKANDCLICK_CUSTOM = {
-    'watchad-bonus': (870, 525), #sizedep
-    'claim-calendar': (710, 530), #sizedep
-    'claim-gold': (740, 540), #sizedep
-    'claim-milestone': (712, 547), #sizedep
-    'watchad-thanks': (710, 530), #sizedep
-    'levelup': (710, 560), #sizedep
+    'watchad-bonus': (870, 525),
+    'claim-calendar': (710, 530),
+    'claim-gold': (740, 540),
+    'claim-milestone': (712, 547),
+    'claim-rewardclaimed': (714, 541),
+    'watchad-thanks': (710, 530),
+    'levelup': (710, 560),
     'tickle-complete': clickMoveUp,
     'tasks-reward-tickle': clickTasksReward,
     'watchad-sound': clickAdWait,
@@ -180,6 +182,30 @@ LOOKANDCLICK_CUSTOM = {
     'quest-end-reward': clickLevelupChar,
     'aristo-tickle': clickAristoTickle,
 }
+
+def clickAllCommon(grabber: DmkGrabber) -> None:
+    grabber.log('LAC', Fore.RED+'** Nuclear clicking **'+Fore.WHITE)
+
+    # Save a screenshot for later ss-yyyymmdd-hhnnss.png
+    ss = grabber.grab(color=True)
+    cv.imwrite(datetime.datetime.now().strftime('ss-%Y%m%d-%H%M%S.png'), ss)
+
+def clickAllLAC(grabber):
+    clickAllCommon(grabber)
+
+    # Click all the items that have a defined place
+    for v in LOOKANDCLICK_CUSTOM.values():
+        if isinstance(v, tuple):
+            grabber.click(v[0], v[1], interval=0.100)
+
+def clickEverywhere(grabber):
+    clickAllCommon(grabber)
+
+    width = grabber.width
+    height = grabber.height
+    for y in range(0.05, 0.95, 0.06):
+        for x in range(0.05, 0.95, 0.1):
+            grabber.click(int(x * width), int(y * height), interval=0.100)
 
 def lookAndClick(grabber, name, haystack, needle, threshold=0.97, extraWait=False):
     match, maxval, maxloc = grabber.search(haystack, needle, cv.TM_CCOEFF_NORMED, True)
@@ -196,7 +222,7 @@ def lookAndClick(grabber, name, haystack, needle, threshold=0.97, extraWait=Fals
             grabber.click(clickpos[0], clickpos[1], interval=0.067)
         else:
             # assume lambda or function name
-            # 'xxx': lambda grabber, loc: grabber.log('LAC', 'Lambda {log}')
+            # 'xxx': lambda grabber, loc: grabber.log('LAC', 'Lambda {loc}')
             retVal = clickpos(grabber, maxloc)
 
         # Success
@@ -205,7 +231,12 @@ def lookAndClick(grabber, name, haystack, needle, threshold=0.97, extraWait=Fals
             if (lookAndClick.lastMatch == name):
                 lookAndClick.lastMatchCnt = lookAndClick.lastMatchCnt + 1
                 # If this is hitting over and over, delay the next loop
-                if (lookAndClick.lastMatchCnt > 10):
+                # Or try some hella clicking
+                if lookAndClick.lastMatchCnt == 30:
+                    clickEverywhere(grabber)
+                elif lookAndClick.lastMatchCnt == 20:
+                    clickAllLAC(grabber)
+                elif lookAndClick.lastMatchCnt > 10:
                     time.sleep(30.0)
             else:
                 lookAndClick.lastMatch = name
@@ -298,7 +329,7 @@ def ocrNextActivityTime(grabber):
     _, haystack = cv.threshold(haystack, 248, 255, cv.THRESH_BINARY)
     #haystack = cv.blur(haystack, (3,3))
     #_, haystack = cv.threshold(haystack, 128, 255, cv.THRESH_BINARY)
-    timestr = grabber.image_to_string(haystack).strip()
+    timestr = grabber.imgToStr(haystack)
     if timestr == '':
         return
     cv.imshow('Result', haystack)
@@ -315,7 +346,7 @@ def testSearch(grabber, needle, bounds=None):
         #clickTasksReward(grabber, None)
 
         haystack = grabber.grab(bounds=bounds)
-        #print(grabber.image_to_string(haystack))
+        #print(grabber.imgToStr(haystack))
         match, maxval, maxloc = grabber.search(haystack, needle, cv.TM_CCOEFF_NORMED, True)
         print(f'Result {maxval} at {maxloc} center')
         #clickCheckGreen(grabber, maxloc) # use watchad-bronze / watchad-mystery-radiant
@@ -341,6 +372,55 @@ def standaloneCheck(grabber) -> bool:
 
     return retVal
 
+def actorCheckNew(grabber):
+    grabber.activate(interval=0.100)
+    # Get the actor's photo before it changes when clicked
+    img_portrait = grabber.grab(bounds=(21,24,95,62), color=True)
+    #cv.imwrite('actortest.png', img_portrait)
+    img_portrait_gray = cv.cvtColor(img_portrait, cv.COLOR_BGR2GRAY)
+
+    # Click to open the tasks window hopefully
+    grabber.click(52, 67, interval=0.700)
+    # Try to get the name from the window title
+    img_name = grabber.grab(bounds=(935,118,1375,157))
+    cv.imshow('Result', img_name)
+    cv.waitKey(3000)
+    _, img_name = cv.threshold(img_name, 220, 255, cv.THRESH_BINARY)
+    name = grabber.imgToStr(img_name)
+    cv.imshow('Result', img_name)
+    cv.waitKey(3000)
+
+    bestMatch = { 'val': 0.0, 'name': '' }
+    for a, knownImg in actorsCheckAssign.actors.items():
+        _, maxval, _ = grabber.search(img_portrait_gray, knownImg)
+        if maxval > bestMatch['val']:
+            bestMatch['val'] = maxval
+            bestMatch['name'] = a
+
+    # If no good match, create a new actor
+    isNew = bestMatch['val'] < 0.8
+
+    # sanitize the name
+    name = name.lower()
+    name = re.sub('[^a-z]', '', name)
+    if name[-3:] == 'lvl':
+        name = name[:-3]
+
+    grabber.log('ACT', f'New actor {name}: {isNew} ({bestMatch["name"]}={bestMatch["val"]:0.3f})')
+
+    if isNew:
+        # New actor! Create a directory for them with their portrait
+        newdir = os.path.join('actors', f'{name}_NEW')
+        os.mkdir(newdir)
+        cv.imwrite(os.path.join(newdir, 'actor.png'), img_portrait)
+        # Reload the list of actors
+        actorsCheckAssign.actors = actorsLoad(grabber)
+
+    # Click the close button on the actor's window
+    grabber.click(1388, 100, interval=0.067)
+
+    return isNew
+
 def ticklerCheck(grabber) -> bool:
     ### Tickler corner stuff
     ss_corner = grabber.grab(bounds=(10,10,125,140))
@@ -349,21 +429,31 @@ def ticklerCheck(grabber) -> bool:
         return False
 
     # check for any character portrait tickle active
-    _, maxval, _ = grabber.search(ss_corner, ticklerCheck.img_tickactive, cv.TM_CCOEFF_NORMED)
+    _, maxval, _ = grabber.search(ss_corner, ticklerCheck.img_tickactive)
     if maxval < 0.99:
         return False
 
     # Complete Task
+    retVal = False
     if lookAndClick(grabber, 'tickle-complete', ss_corner, ticklerCheck.img_tickcomplete):
-        pass
+        retVal = True
     elif actorsCheckAssign(grabber, ss_corner):
         # Assign new task if the tickle is gone
-        pass
+        retVal = True
     elif lookAndClick(grabber, 'tickle-quest-avail', ss_corner, ticklerCheck.img_tickqavail):
         # must come after actor check because overlaps with chest/parade
-        pass
+        retVal = True
 
-    return True
+    # If the tickactive is present but no other template matches, it is possible
+    # this is a new actor that needs to be added
+    if retVal:
+        ticklerCheck.failCnt = 0
+    else:
+        ticklerCheck.failCnt += 1
+        if ticklerCheck.failCnt == 10:
+            actorCheckNew(grabber)
+
+    return retVal
 
 def actorsLoad(grabber):
     retVal = {}
@@ -375,17 +465,23 @@ def actorsLoad(grabber):
             profile_fname = os.path.join(dir, a, 'actor.png')
             if os.path.exists(profile_fname):
                 retVal[a] = cv.imread(profile_fname, cv.IMREAD_GRAYSCALE)
+            stale_force_fname = os.path.join(dir, a, 'force.txt')
+            if os.path.exists(stale_force_fname):
+                grabber.log('ACT', f'{Fore.YELLOW}Removing stale force.txt for {Fore.WHITE}{a}')
+                os.remove(stale_force_fname)
+            if os.path.exists(os.path.join(dir, a, 'abort.txt')):
+                grabber.log('ACT', f'{Fore.YELLOW}WARNING:{Fore.WHITE} {a} has abort.txt')
     grabber.log('ACT', f'Loaded {len(retVal)} actors')
     return retVal
 
-def actorsCheckAssign(grabber, ss):
+def actorsCheckAssign(grabber:DmkGrabber, ss):
     now = time.monotonic()
     if now - actorsCheckAssign.lastActorAssignCheck < (30 if actorsCheckAssign.lastWasSkip else 5):
         return False
 
     for a in actorsCheckAssign.actors:
         needle = actorsCheckAssign.actors[a]
-        match, maxval, maxloc = grabber.search(ss, needle, cv.TM_CCOEFF_NORMED, True)
+        _, maxval, maxloc = grabber.search(ss, needle, returnCenter=True)
         #grabber.log('ACA', f'{a}={maxval:0.3f}')
         if maxval > 0.97:
             grabber.click(maxloc[0], maxloc[1], interval=0.5)
@@ -482,23 +578,12 @@ def tickleInit(grabber):
     ticklerCheck.img_tickcomplete = cv.imread('images/tickle-complete.png', cv.IMREAD_GRAYSCALE)
     ticklerCheck.img_tickactive = cv.imread('images/tickle-active.png', cv.IMREAD_GRAYSCALE)
     ticklerCheck.img_tickqavail = cv.imread('images/tickle-quest-avail.png', cv.IMREAD_GRAYSCALE)
-
-def launchApp(grabber):
-    if grabber.isRunning:
-        return
-    grabber.log('MAIN', 'Application not running launching...')
-    os.system('explorer.exe shell:appsFolder\A278AB0D.DisneyMagicKingdoms_h6adky7gbf63m!App')
-    time.sleep(60)
-    # zoom out
-    grabber.activate()
-    grabber.moveTo(700, 300)
-    grabber.scroll(-2000)
+    ticklerCheck.failCnt = 0
 
 def restartAppCheck(grabber):
     # Check for exit-at
-    global config
     now = datetime.datetime.now()
-    if config.exit_at and now > config.exit_at:
+    if grabber.config.exit_at and now > grabber.config.exit_at:
         grabber.log('MAIN', Fore.GREEN+'Exiting due to exit-at'+Fore.WHITE)
         sys.exit(0)
 
@@ -510,61 +595,33 @@ def restartAppCheck(grabber):
     grabber.log('MAIN', Fore.GREEN+'Maximum run time reached, restarting'+Fore.WHITE)
     grabber.click(1410, -16) # close
     time.sleep(30)
-    launchApp(grabber)
-
-def parseExitAt(s: str) -> datetime.datetime:
-    l = len(s)
-    if l < 4 or l > 5:
-        return None
-
-    # hhnn or hh:nn
-    h = int(s[:2])
-    n = int(s[-2:])
-
-    now = datetime.datetime.now()
-    next = now.replace(hour=h, minute=n, second=0, microsecond=0)
-
-    # if next is in the past, then we want tomorrow's
-    if next < now:
-        next += datetime.timedelta(days=1)
-
-    return next
-
-def parseCmdLine(grabber):
-    import argparse
-    parser = argparse.ArgumentParser(
-        prog='dmk',
-        description='Disney Magic Kindgoms bot'
-    )
-    parser.add_argument('-x', '--exit-at', type=parseExitAt,
-                        help='Exit the script at this time (hhnn or hh:nn)')
-
-    global config
-    config = parser.parse_args()
-
-    if config.exit_at:
-        grabber.log('MAIN', 'Will exit-at ' + config.exit_at.strftime('%Y-%b-%d %H:%M (%a)'))
+    grabber.launchApp()
 
 def mainLoop(grabber):
     now = time.monotonic()
     restartAppCheck.startTime = now
     doRandom.lastRun = now
-    lastStandalone = now
+    lastActivity = now
+    noActivityCnt = 0
     while True:
-        didStandalone = standaloneCheck(grabber) # updates window location
-        didStandalone = periodicCheck(grabber) or didStandalone
-        if not didStandalone:
-            didStandalone = ticklerCheck(grabber)
+        didSomething = standaloneCheck(grabber) # updates window location
+        didSomething = periodicCheck(grabber) or didSomething
+        if not didSomething:
+            didSomething = ticklerCheck(grabber)
 
         now = time.monotonic()
-        if didStandalone:
-            lastStandalone = now
+        if didSomething:
+            lastActivity = now
+            noActivityCnt = 0
+        else:
+            noActivityCnt += 1
 
         # If no activity in X seconds, do something random
-        if now - lastStandalone > 15:
-           didStandalone = doRandom(grabber)
+        if now - lastActivity > 15:
+           if doRandom(grabber):
+               noActivityCnt = 0
 
-        key = cv.waitKey(500 if didStandalone else 2000)
+        key = cv.waitKey(500 if noActivityCnt < 4 else 2000)
         if key == ord('q'):
             return
         elif key == ord(' '):
@@ -573,12 +630,8 @@ def mainLoop(grabber):
             restartAppCheck(grabber)
 
 # Setup
-
-random.seed()
-
-grabber = WindowGrabber('ApplicationFrameWindow', 'Disney Magic Kingdoms', (1440, 665))  # 1440x608 (1266, 911)
-parseCmdLine(grabber)
-launchApp(grabber)
+grabber = DmkGrabber()
+grabber.launchApp()
 grabber.log('MAIN', f'Window size is {grabber.width}x{grabber.height}')
 
 #testSearch(grabber, cv.imread('actors/fred/actor.png', cv.IMREAD_GRAYSCALE))
