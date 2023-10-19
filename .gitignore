@@ -1,8 +1,9 @@
 .venv
+actors/wish.png
 actors/*/*.png
 actors/*/notes.txt
 images/
 __pycache__/
-ss.png
+ss*.png
 target.png
 tasks.png

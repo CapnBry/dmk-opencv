@@ -1,5 +1,6 @@
 import sys
 import os
+import threading
 import time
 import datetime
 import re
@@ -11,6 +12,7 @@ import importlib
 from dmkgrabber import DmkGrabber
 from colorama import Fore, Back, Style
 import webui_main
+from dataclasses import dataclass
 
 STANDALONE_CLICKS = [
     # latency sensitive items go first
@@ -57,6 +59,14 @@ PERIODIC_CLICKS = [
     'close-missed-ad',
     'close-chestmenu', # chestmenu and charactermenu (should come last!)
 ]
+
+@dataclass
+class Actor:
+    name: str
+    last: float
+    count: int
+    needle: np.array
+    handler: any
 
 def clickMoveUp(grabber, loc) -> bool:
     grabber.click(loc[0], loc[1], interval=0.033)
@@ -221,9 +231,8 @@ def lookAndClick(grabber, name, haystack, needle, threshold=0.97, extraWait=Fals
         if type(clickpos) is tuple:
             grabber.click(clickpos[0], clickpos[1], interval=0.067)
         else:
-            # assume lambda or function name
-            # 'xxx': lambda grabber, loc: grabber.log('LAC', 'Lambda {loc}')
             retVal = clickpos(grabber, maxloc)
+            #clickpos = resultDesc or clickpos
 
         # Success
         if retVal:
@@ -383,22 +392,22 @@ def actorCheckNew(grabber):
     grabber.click(52, 67, interval=0.700)
     # Try to get the name from the window title
     img_name = grabber.grab(bounds=(935,118,1375,157))
-    cv.imshow('Result', img_name)
-    cv.waitKey(3000)
+    #cv.imshow('Result', img_name)
+    #cv.waitKey(3000)
     _, img_name = cv.threshold(img_name, 220, 255, cv.THRESH_BINARY)
     name = grabber.imgToStr(img_name)
-    cv.imshow('Result', img_name)
-    cv.waitKey(3000)
+    #cv.imshow('Result', img_name)
+    #cv.waitKey(3000)
 
     bestMatch = { 'val': 0.0, 'name': '' }
-    for a, knownImg in actorsCheckAssign.actors.items():
-        _, maxval, _ = grabber.search(img_portrait_gray, knownImg)
+    for a in actorsCheckAssign.actors:
+        _, maxval, _ = grabber.search(img_portrait_gray, a.needle)
         if maxval > bestMatch['val']:
             bestMatch['val'] = maxval
-            bestMatch['name'] = a
+            bestMatch['name'] = a.name
 
     # If no good match, create a new actor
-    isNew = bestMatch['val'] < 0.8
+    isNew = bestMatch['val'] < 0.9
 
     # sanitize the name
     name = name.lower()
@@ -406,57 +415,59 @@ def actorCheckNew(grabber):
     if name[-3:] == 'lvl':
         name = name[:-3]
 
-    grabber.log('ACT', f'New actor {name}: {isNew} ({bestMatch["name"]}={bestMatch["val"]:0.3f})')
+    grabber.log('ACT', f'New actor {name}: {isNew} (closest was {bestMatch["name"]}={bestMatch["val"]:0.3f})')
 
     if isNew:
         # New actor! Create a directory for them with their portrait
         newdir = os.path.join('actors', f'{name}_NEW')
-        os.mkdir(newdir)
-        cv.imwrite(os.path.join(newdir, 'actor.png'), img_portrait)
-        # Reload the list of actors
-        actorsCheckAssign.actors = actorsLoad(grabber)
+        if not os.path.exists(newdir):
+            os.mkdir(newdir)
+            cv.imwrite(os.path.join(newdir, 'actor.png'), img_portrait)
+            # Reload the list of actors
+            actorsCheckAssign.actors = actorsLoad(grabber)
 
     # Click the close button on the actor's window
     grabber.click(1388, 100, interval=0.067)
 
     return isNew
 
-def ticklerCheck(grabber) -> bool:
+def ticklerCheck(grabber) -> int:
     ### Tickler corner stuff
     ss_corner = grabber.grab(bounds=(10,10,125,140))
     cv.imshow('Corner', ss_corner)
-    if ss_corner is None:
-        return False
+    #print('ac')
 
     # check for any character portrait tickle active
     _, maxval, _ = grabber.search(ss_corner, ticklerCheck.img_tickactive)
     if maxval < 0.99:
-        return False
+        return 0
 
     # Complete Task
-    retVal = False
+    foundAnything = False
+    expediteNextActorCheck = False
     if lookAndClick(grabber, 'tickle-complete', ss_corner, ticklerCheck.img_tickcomplete):
-        retVal = True
+        foundAnything = True
     elif actorsCheckAssign(grabber, ss_corner):
         # Assign new task if the tickle is gone
-        retVal = True
+        foundAnything = True
+        expediteNextActorCheck = True
     elif lookAndClick(grabber, 'tickle-quest-avail', ss_corner, ticklerCheck.img_tickqavail):
         # must come after actor check because overlaps with chest/parade
-        retVal = True
+        foundAnything = True
 
     # If the tickactive is present but no other template matches, it is possible
     # this is a new actor that needs to be added
-    if retVal:
+    if foundAnything:
         ticklerCheck.failCnt = 0
     else:
         ticklerCheck.failCnt += 1
-        if ticklerCheck.failCnt == 10:
+        if ticklerCheck.failCnt == 5:
             actorCheckNew(grabber)
 
-    return retVal
+    return 1 if expediteNextActorCheck else 2
 
 def actorsLoad(grabber):
-    retVal = {}
+    retVal = []
     dir = 'actors'
     for a in os.listdir(dir):
         if a == '__pycache__':
@@ -464,7 +475,10 @@ def actorsLoad(grabber):
         if os.path.isdir(os.path.join(dir, a)):
             profile_fname = os.path.join(dir, a, 'actor.png')
             if os.path.exists(profile_fname):
-                retVal[a] = cv.imread(profile_fname, cv.IMREAD_GRAYSCALE)
+                retVal.append(
+                    Actor(name=a, last=0.0, count=0,
+                          needle=cv.imread(profile_fname, cv.IMREAD_GRAYSCALE), handler=None)
+                )
             stale_force_fname = os.path.join(dir, a, 'force.txt')
             if os.path.exists(stale_force_fname):
                 grabber.log('ACT', f'{Fore.YELLOW}Removing stale force.txt for {Fore.WHITE}{a}')
@@ -474,35 +488,49 @@ def actorsLoad(grabber):
     grabber.log('ACT', f'Loaded {len(retVal)} actors')
     return retVal
 
+def actorsSort():
+    # Actors that get used the most move to the front
+    actorsCheckAssign.actors.sort(key=lambda a: a.count, reverse=True)
+
 def actorsCheckAssign(grabber:DmkGrabber, ss):
     now = time.monotonic()
     if now - actorsCheckAssign.lastActorAssignCheck < (30 if actorsCheckAssign.lastWasSkip else 5):
         return False
 
     for a in actorsCheckAssign.actors:
-        needle = actorsCheckAssign.actors[a]
-        _, maxval, maxloc = grabber.search(ss, needle, returnCenter=True)
+        _, maxval, maxloc = grabber.search(ss, a.needle, returnCenter=True)
         #grabber.log('ACA', f'{a}={maxval:0.3f}')
         if maxval > 0.97:
+            #after = time.monotonic()
+            #print(f'Actor check took {after-now:0.3f}s')
+
             grabber.click(maxloc[0], maxloc[1], interval=0.5)
 
             # Prevent running the same actor over and over, but click
             # to see if it advances
-            if actorsCheckAssign.lastWasSkip and actorsCheckAssign.lastActor == a:
+            if actorsCheckAssign.lastWasSkip and actorsCheckAssign.lastActor == a.name:
                 break
-            actorsCheckAssign.lastActor = a
+            actorsCheckAssign.lastActor = a.name
 
             closeness = (f'{Fore.RED}CLOSE{Fore.WHITE} ') if maxval < 0.991 else ''
-            grabber.log('ACT', f'Assigning action for actor: {closeness}{maxval:0.3f} {a}')
-            if os.path.exists(os.path.join('actors', a, '__init__.py')):
-                func = importlib.import_module('actors.' + a)
-            else:
-                func = importlib.import_module('actors.default')
-            actorsCheckAssign.lastWasSkip = func.assignTask(a, grabber)
+            grabber.log('ACT', f'Assigning action for actor: {closeness}{maxval:0.3f} {a.name} x{a.count}')
+            if a.handler is None:
+                if os.path.exists(os.path.join('actors', a.name, '__init__.py')):
+                    namespace = importlib.import_module('actors.' + a.name)
+                else:
+                    namespace = importlib.import_module('actors.default')
+                a.handler = namespace.assignTask
+            actorsCheckAssign.lastWasSkip = a.handler(a.name, grabber)
+            a.last = now
+            a.count += 1
+
+            if not actorsCheckAssign.lastWasSkip:
+                actorsSort()
+
             # Need to run again to refresh ss
             return True
         elif maxval > 0.90:
-            grabber.log('CLOSE', f'Actor {a}={maxval}')
+            grabber.log('CLOSE', f'Actor {a.name}={maxval}')
 
     # Stop checking once no actor was found
     actorsCheckAssign.lastActorAssignCheck = now
@@ -597,6 +625,16 @@ def restartAppCheck(grabber):
     time.sleep(30)
     grabber.launchApp()
 
+def mainLoopDelayForNac(noActivityCnt:int) -> int:
+    # 500ms for first 0-2s (4x)
+    # 2000ms for 2s-10s (4x)
+    # else 5000ms
+    if noActivityCnt < 4:
+        return 500
+    if noActivityCnt < 8:
+        return 2000
+    return 5000
+
 def mainLoop(grabber):
     now = time.monotonic()
     restartAppCheck.startTime = now
@@ -606,8 +644,16 @@ def mainLoop(grabber):
     while True:
         didSomething = standaloneCheck(grabber) # updates window location
         didSomething = periodicCheck(grabber) or didSomething
-        if not didSomething:
-            didSomething = ticklerCheck(grabber)
+        if not didSomething and noActivityCnt >= 2: # 2+this=3x delays after
+            ticklerResult = ticklerCheck(grabber)
+            # Result == 0 no tickle
+            # Result == 1 check again next loop (assigned actor)
+            if ticklerResult == 1:
+                lastActivity = now
+                noActivityCnt = 1
+            # Result == 2 delay next check
+            elif ticklerResult == 2:
+                didSomething = True
 
         now = time.monotonic()
         if didSomething:
@@ -615,13 +661,14 @@ def mainLoop(grabber):
             noActivityCnt = 0
         else:
             noActivityCnt += 1
+            # If no activity in X seconds, do something random
+            if now - lastActivity > 15:
+               if doRandom(grabber):
+                   noActivityCnt = 0
 
-        # If no activity in X seconds, do something random
-        if now - lastActivity > 15:
-           if doRandom(grabber):
-               noActivityCnt = 0
-
-        key = cv.waitKey(500 if noActivityCnt < 4 else 2000)
+        delay = mainLoopDelayForNac(noActivityCnt)
+        #print(delay)
+        key = cv.waitKey(delay)
         if key == ord('q'):
             return
         elif key == ord(' '):
@@ -642,7 +689,11 @@ tickleInit(grabber)
 standaloneInit(grabber)
 lookAndClickInit(grabber)
 
-mainLoop(grabber)
+robot = threading.Thread(target=mainLoop, args=(grabber,), name='Main Robot')
+robot.daemon = True
+robot.start()
+
+robot.join()
 
 cv.destroyAllWindows()
 

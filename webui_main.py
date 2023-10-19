@@ -1,7 +1,7 @@
 from flask import Flask, render_template
 from dmkgrabber import DmkGrabber
 
-app = Flask(__name__, template_folder='html')
+app = Flask(__name__)
 
 @app.route('/')
 def index():

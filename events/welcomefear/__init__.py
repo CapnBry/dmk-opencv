@@ -31,7 +31,7 @@ def assignIdleTask(actor, grabber) -> bool:
     if actor == 'buzz':
         task = 'target-so'
     elif actor == 'mickey':
-        task = 'target-rpc'
+        task = 'target-ptt' # or 'target-rpc' for bopeep
     elif actor == 'goofy':
         task = 'target-ctf'
     elif actor == 'cinderella':

@@ -37,8 +37,8 @@ def assignTask(actor, grabber, forceTask=None) -> bool:
     path_base = os.path.join(os.path.dirname(__file__), actor)
     do_skip = os.path.exists(os.path.join(path_base, 'skip.txt'))
     if do_skip:
-        grabber.press('esc')
-        time.sleep(0.500)
+        # Close the task dialog
+        grabber.click(1390, 102, interval=0.5)
         return True
 
     do_abort = os.path.exists(os.path.join(path_base, 'abort.txt'))
