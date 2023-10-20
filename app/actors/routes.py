@@ -36,25 +36,6 @@ def index():
     return render_template(f'{request.blueprint}/index.html',
         actors=actors, counts=counts)
 
-# @bp.route('/list')
-# def actorList():
-#     retVal = []
-#     dir = 'actors'
-#     for a in os.listdir(dir):
-#         if a == '__pycache__':
-#             continue
-#         if os.path.isdir(os.path.join(dir, a)):
-#             retVal.append(
-#                 {
-#                     'id': a,
-#                     'name': a,
-#                     'hasAbort': os.path.exists(os.path.join(dir, a, 'abort.txt')),
-#                     'hasTarget': os.path.exists(os.path.join(dir, a, 'target.png')),
-#                     'portrait_url': f'{a}/portrait',
-#                 }
-#             )
-#     return jsonify(retVal)
-
 @bp.route('/<actor>/portrait')
 def actorPortrait(actor):
     dir = getActorDir(actor)
@@ -90,7 +71,7 @@ def actorTaskImg(actor, fname):
 def actorHandleTasksPost(actor):
     dir = getActorDir(actor)
     # Look for action file create/delete
-    for item in ['wish', 'abort', 'force']:
+    for item in ['abort', 'force', 'skip', 'wish']:
         ival = request.values.get(item)
         if not ival:
             continue
@@ -116,23 +97,27 @@ def actorTasks(actor):
 
     dir = getActorDir(actor)
     tasks = []
-    hasWish = False
     hasAbort = False
     hasForce = False
+    hasSkip = False
+    hasWish = False
     notes = None
     srch = re.compile('^target[a-z\-]*.png$')
     for entry in os.listdir(dir):
         entryfull = os.path.join(dir, entry)
         if not os.path.isfile(entryfull):
             continue
-        if entry == 'wish.txt':
-            hasWish = True
-            continue
         if entry == 'abort.txt':
             hasAbort = True
             continue
         if entry == 'force.txt':
             hasForce = True
+            continue
+        if entry == 'skip.txt':
+            hasSkip = True
+            continue
+        if entry == 'wish.txt':
+            hasWish = True
             continue
         if entry == 'notes.txt':
             with open(entryfull, 'r') as f:
@@ -141,10 +126,11 @@ def actorTasks(actor):
         if not srch.match(entry):
             continue
         tasks.append(entry)
-    tasks.sort(reverse=True)
+    # Put the active one up top
+    tasks.sort(key=lambda a: '' if a == 'target.png' else a)
     return render_template(f'{request.blueprint}/tasks.html',
-        actor=actor, tasks=tasks,
-        hasWish=hasWish, hasAbort=hasAbort, hasForce=hasForce, notes=notes)
+        actor=actor, tasks=tasks, notes=notes,
+        hasAbort=hasAbort, hasForce=hasForce, hasSkip=hasSkip, hasWish=hasWish)
 
 def actorFileOp(actor_name, fname):
     if actor_name is None:

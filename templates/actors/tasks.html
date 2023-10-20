@@ -9,8 +9,9 @@
         <div class="col-6">
             <div class="gap-2 justify-content-center py-1">
                     <button class="btn px-4 {{ 'btn-warning' if hasWish else 'btn-secondary' }}" name="wish" value="{{ '0' if hasWish else '1' }}" type="submit">Wish</button>
+                    <button class="btn px-4 {{ 'btn-warning' if hasSkip else 'btn-secondary' }}" name="skip" value="{{ '0' if hasSkip else '1' }}" type="submit">Skip</button>
                     <button class="btn px-4 {{ 'btn-danger' if hasAbort else 'btn-secondary' }}" name="abort" value="{{ '0' if hasAbort else '1' }}" type="submit">Abort</button>
-                    <button class="btn px-4 {{ 'btn-danger' if hasForce else 'btn-secondary' }}" name="force" value="{{ '0' if hasForce else '1' }}" type="submit">Force</button>
+                    <!-- <button class="btn px-4 {{ 'btn-danger' if hasForce else 'btn-secondary' }}" name="force" value="{{ '0' if hasForce else '1' }}" type="submit">Force</button> -->
             </div>
         </div>
     </div>
@@ -53,6 +54,6 @@
 </main>
 {% endblock %}
 {% block footer %}
-<div><a href="{{ url_for('actors.index') }}">Return to list</a></div>
+<div><a href="{{ url_for('actors.index') + '#' + actor }}">Return to list</a></div>
 {{ super() }}
 {% endblock %}

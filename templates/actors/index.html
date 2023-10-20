@@ -10,38 +10,39 @@
         <div class="col-10">
             {{actors|length}} total actors,
             {{counts['Wish']}} wish{{'es' if counts['Wish'] > 1 else ''}} pending{% if counts['Skip'] > 0 %}
-            , <span class="text-warning fw-bold">{{counts['Skip']}} skips</span>{% endif %}{% if counts['Abort'] > 0 %}
-            , <span class="text-danger fw-bold">{{counts['Abort']}} aborts</span>{% endif %}
+            , <span class="text-warning fw-bold">{{counts['Skip']}} skip</span>{% endif %}{% if counts['Abort'] > 0 %}
+            , <span class="text-danger fw-bold">{{counts['Abort']}} abort</span>{% endif %}
         </div>
         <div class="col-2">
             <a href="{{ url_for('main.index') }}">Return to home</a>
         </div>
     </div>
 </div>
-<table class="table table-hover">
+<table class="table table-hover"><tbody>
 {% for a in actors %}
     <tr>
-            <td scope="col">
-                <a href="{{ url_for('actors.actorTasks', actor=a.id) }}">
-                    <img src="{{ url_for('actors.actorPortrait', actor=a.id) }}" loading="lazy">
-                </a>
-            </td>
-            <td scope="col">
-                <a href="{{ url_for('actors.actorTasks', actor=a.id) }}" class="text-reset text-decoration-none">
-                    <h4>{{a.name}}</h4>
-                    <button class="btn px-2 {{ 'btn-warning' if a.hasWish else 'btn-secondary' }}" type="button">Wish</button>
-                    <button class="btn px-2 {{ 'btn-danger' if a.hasAbort else 'btn-secondary' }}" type="button">Abort</button>
-                    <button class="btn px-2 {{ 'btn-danger' if a.hasForce else 'btn-secondary' }}" type="button">Force</button>
-                </a>
-            </td>
-            <td scope="col">
-                <a href="{{ url_for('actors.actorTasks', actor=a.id) }}">
-                    {% if a.hasTarget %}<img src="{{ url_for('actors.actorTaskImg', actor=a.name, fname='target.png') }}" loading="lazy">{% else %}None{% endif %}
-                </a>
-            </td>
-        </tr>
+        <td>
+            <a href="{{ url_for('actors.actorTasks', actor=a.id) }}">
+                <img src="{{ url_for('actors.actorPortrait', actor=a.id) }}" loading="lazy">
+            </a>
+        </td>
+        <td>
+            <a id="{{a.name}}"></a>
+            <a href="{{ url_for('actors.actorTasks', actor=a.id) }}" class="text-reset text-decoration-none">
+                <h4>{{a.name}}</h4>
+                <button class="btn px-2 {{ 'btn-warning' if a.hasWish else 'btn-secondary' }}" type="button">Wish</button>
+                <button class="btn px-2 {{ 'btn-warning' if a.hasSkip else 'btn-secondary' }}" type="button">Skip</button>
+                <button class="btn px-2 {{ 'btn-danger' if a.hasAbort else 'btn-secondary' }}" type="button">Abort</button>
+                <!-- <button class="btn px-2 {{ 'btn-danger' if a.hasForce else 'btn-secondary' }}" type="button">Force</button> -->
+            </a>
+        </td>
+        <td>
+            <a href="{{ url_for('actors.actorTasks', actor=a.id) }}">
+                {% if a.hasTarget %}<img src="{{ url_for('actors.actorTaskImg', actor=a.name, fname='target.png') }}" loading="lazy">{% else %}None{% endif %}
+            </a>
+        </td>
+    </tr>
 {% endfor %}
-    </tbody>
-</table>
+</tbody></table>
 </main>
 {% endblock %}

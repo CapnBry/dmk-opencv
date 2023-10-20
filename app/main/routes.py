@@ -59,6 +59,20 @@ def drag():
 
     return 'OK', 200
 
+@bp.route('/scroll', methods=['POST'])
+def scroll():
+    amt = request.values.get('amt', type=int)
+
+    if amt is None:
+        abort(400)
+
+    main.pauseMainThread(True)
+    main.grabber.moveTo(main.grabber.width // 2, main.grabber.height // 2)
+    main.grabber.scroll(amt)
+    main.pauseMainThread(False)
+
+    return 'OK', 200
+
 @bp.route('/log')
 def getLogJson():
     resp = jsonify(main.grabber.getLog(request.values.get('cnt', type=int)))
