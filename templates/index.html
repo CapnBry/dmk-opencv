@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Dmk{% endblock %}
+{% block head %}
+    {{ super() }}
+    <script type="module" type="text/javascript">
+        import { AnsiUp } from "{{ url_for('static', filename='js/ansi_up.js')}}"
+        let delay = (time) => (result) => new Promise(resolve => setTimeout(() => resolve(result), time));
+
+        function reloadSS()
+        {
+            document.getElementById('ss').src = 'ss?ts=' + (+new Date());
+        }
+
+        function reloadConsole()
+        {
+            fetch("{{ url_for('main.getLogJson') }}?cnt=5")
+                .then((response) => response.json())
+                .then((log) => {
+                    let ansi_up = new AnsiUp();
+                    let c = document.getElementById('console');
+                    c.innerHTML = ansi_up.ansi_to_html(log.join('\n'));
+                });
+        }
+
+        function ssAction(url, o)
+        {
+            let data = new FormData()
+            for (const k in o)
+                data.append(k, o[k]);
+
+            fetch(url, { method: 'POST', body: data })
+                .then(delay(500))
+                .then(reloadSS);
+        }
+
+        function sendClick(e)
+        {
+            ssAction("{{ url_for('main.click') }}", {'x': e.offsetX, 'y': e.offsetY});
+        }
+
+        function sendDrag(e)
+        {
+            let dir = parseInt(this.id.substr(-1));
+            ssAction("{{ url_for('main.drag') }}", {dir, 'amt': 500});
+        }
+
+        window.onload = function() {
+            let ss = document.getElementById('ss')
+            ss.addEventListener('click', sendClick);
+            document.getElementById('drag0').addEventListener('click', sendDrag);
+            document.getElementById('drag1').addEventListener('click', sendDrag);
+            document.getElementById('drag2').addEventListener('click', sendDrag);
+            document.getElementById('drag3').addEventListener('click', sendDrag);
+            reloadSS();
+            reloadConsole();
+        };
+</script>
+{% endblock %}
+{% block content %}
+    <img id="ss">
+    <div class="d-flex gap-2 justify-content-center py-1">
+        <button id="drag0" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-left"></i> Left</button>
+        <button id="drag1" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-up"></i> Up</button>
+        <button id="drag3" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-down"></i> Down</button>
+        <button id="drag2" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-right"></i> Right</button>
+    </div>
+    <pre id="console" class="console"></pre>
+{% endblock %}

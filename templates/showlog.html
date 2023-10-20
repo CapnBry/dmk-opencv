@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Dmk Log{% endblock %}
+{% block head %}
+    {{ super() }}
+{% endblock %}
+{% block content %}
+<div>Note: Log is reversed</div>
+<pre id="console" class="console"></pre>
+<script type="module" type="text/javascript">
+    import { AnsiUp } from "{{ url_for('static', filename='js/ansi_up.js')}}"
+
+    let log = {{ log | safe}};
+    let ansi_up = new AnsiUp();
+    let c = document.getElementById('console');
+    log.reverse();
+    c.innerHTML = ansi_up.ansi_to_html(log.join('\n'));
+    log = null;
+</script>
+{% endblock %}

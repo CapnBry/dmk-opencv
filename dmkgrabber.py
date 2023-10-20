@@ -26,10 +26,9 @@ class DmkGrabber(WindowGrabber):
     _instance = None
 
     def __init__(self):
+        super().__init__('ApplicationFrameWindow', 'Disney Magic Kingdoms', (1440, 665))
         random.seed()
         self.parseCmdLine()
-
-        super().__init__('ApplicationFrameWindow', 'Disney Magic Kingdoms', (1440, 665))
 
     def parseCmdLine(self):
         import argparse
@@ -37,10 +36,10 @@ class DmkGrabber(WindowGrabber):
             prog='dmk',
             description='Disney Magic Kindgoms bot'
         )
-        parser.add_argument('-x', '--exit-at', type=parseExitAt,
+        parser.add_argument('-x', '--exit-at', type=parseExitAt, #default='0600',
                             help='Exit the script at this time (hhnn or hh:nn)')
 
-        self.config = parser.parse_args()
+        self.config, _ = parser.parse_known_args()
 
         if self.config.exit_at:
             self.log('MAIN', 'Will exit-at ' + self.config.exit_at.strftime('%Y-%b-%d %H:%M (%a)'))

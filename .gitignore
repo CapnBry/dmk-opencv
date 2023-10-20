@@ -1,6 +1,8 @@
 .venv
+events/*/*.png
 actors/wish.png
 actors/*/*.png
+actors/*/std
 actors/*/notes.txt
 images/
 __pycache__/

@@ -11,7 +11,6 @@ import random
 import importlib
 from dmkgrabber import DmkGrabber
 from colorama import Fore, Back, Style
-import webui_main
 from dataclasses import dataclass
 
 STANDALONE_CLICKS = [
@@ -55,7 +54,7 @@ PERIODIC_CLICKS = [
     'watchad-magic',
     #'watchad-mystery-radiant',
     'quest-end-reward',
-    #'aristo-tickle',
+    'aristo-tickle',
     'close-missed-ad',
     'close-chestmenu', # chestmenu and charactermenu (should come last!)
 ]
@@ -160,14 +159,11 @@ def clickTasksReward(grabber, loc) -> bool:
 def clickAristoTickle(grabber, loc) -> bool:
     # open the event dialog
     grabber.click(loc[0], loc[1], interval=1.0)
-    # Welcome Fear
-    # Watch Ad
-    grabber.click(958, 546, interval=1.0) #sizedep
-    # Aristocats
+    # Aristocats / Cauldron
     # # click aristo-gift-tickle (the box with the play button, no border)
-    # grabber.click(230, 340, interval=1.0) #sizedep
+    grabber.click(230, 340, interval=1.0)
     # # click watchad-mystery-radiant (should be green, why else would we be here)
-    # grabber.click(565, 475) #sizedep
+    grabber.click(565, 475)
     return True
 
 LOOKANDCLICK_CUSTOM = {
@@ -462,7 +458,8 @@ def ticklerCheck(grabber) -> int:
     else:
         ticklerCheck.failCnt += 1
         if ticklerCheck.failCnt == 5:
-            actorCheckNew(grabber)
+            if actorCheckNew(grabber):
+                ticklerCheck.failCnt = 0
 
     return 1 if expediteNextActorCheck else 2
 
@@ -504,13 +501,11 @@ def actorsCheckAssign(grabber:DmkGrabber, ss):
             #after = time.monotonic()
             #print(f'Actor check took {after-now:0.3f}s')
 
+            # before clicking, get a fresh portrait photo if needed
+            portrait_fname = os.path.join('actors', a.name, 'folder.png')
+            if not os.path.exists(portrait_fname):
+                cv.imwrite(portrait_fname, grabber.grab(bounds=(22, 25, 96, 110), color=True))
             grabber.click(maxloc[0], maxloc[1], interval=0.5)
-
-            # Prevent running the same actor over and over, but click
-            # to see if it advances
-            if actorsCheckAssign.lastWasSkip and actorsCheckAssign.lastActor == a.name:
-                break
-            actorsCheckAssign.lastActor = a.name
 
             closeness = (f'{Fore.RED}CLOSE{Fore.WHITE} ') if maxval < 0.991 else ''
             grabber.log('ACT', f'Assigning action for actor: {closeness}{maxval:0.3f} {a.name} x{a.count}')
@@ -520,15 +515,16 @@ def actorsCheckAssign(grabber:DmkGrabber, ss):
                 else:
                     namespace = importlib.import_module('actors.default')
                 a.handler = namespace.assignTask
+
             actorsCheckAssign.lastWasSkip = a.handler(a.name, grabber)
-            a.last = now
-            a.count += 1
+            actorsCheckAssign.lastActor = a.name
 
             if not actorsCheckAssign.lastWasSkip:
+                a.last = now
+                a.count += 1
                 actorsSort()
-
-            # Need to run again to refresh ss
-            return True
+                # Need to run again to refresh ss
+                return True
         elif maxval > 0.90:
             grabber.log('CLOSE', f'Actor {a.name}={maxval}')
 
@@ -625,6 +621,22 @@ def restartAppCheck(grabber):
     time.sleep(30)
     grabber.launchApp()
 
+def shutdown():
+    if shutdown.keepRunning:
+        try:
+            global grabber
+            shutdown.keepRunning = False
+            grabber.activate(interval=0.5)
+
+            global robot
+            robot.join(90.0)
+            grabber.click(1410, -16, interval=1.0) # close
+        except:
+            pass
+
+def pauseMainThread(enable):
+    pauseMainThread.paused = enable
+
 def mainLoopDelayForNac(noActivityCnt:int) -> int:
     # 500ms for first 0-2s (4x)
     # 2000ms for 2s-10s (4x)
@@ -641,7 +653,12 @@ def mainLoop(grabber):
     doRandom.lastRun = now
     lastActivity = now
     noActivityCnt = 0
-    while True:
+    while shutdown.keepRunning:
+        if pauseMainThread.paused:
+             time.sleep(5.0)
+             lastActivity = time.monotonic()
+             continue
+
         didSomething = standaloneCheck(grabber) # updates window location
         didSomething = periodicCheck(grabber) or didSomething
         if not didSomething and noActivityCnt >= 2: # 2+this=3x delays after
@@ -683,6 +700,8 @@ grabber.log('MAIN', f'Window size is {grabber.width}x{grabber.height}')
 
 #testSearch(grabber, cv.imread('actors/fred/actor.png', cv.IMREAD_GRAYSCALE))
 
+shutdown.keepRunning = True
+pauseMainThread.paused = False
 actorsInit(grabber)
 periodicInit(grabber)
 tickleInit(grabber)
@@ -693,7 +712,6 @@ robot = threading.Thread(target=mainLoop, args=(grabber,), name='Main Robot')
 robot.daemon = True
 robot.start()
 
-robot.join()
-
-cv.destroyAllWindows()
+#robot.join()
+#cv.destroyAllWindows()
 

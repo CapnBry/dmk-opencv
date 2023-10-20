@@ -12,6 +12,8 @@ import win32con
 import pytesseract
 from colorama import Fore, Back, Style
 from imutils.object_detection import non_max_suppression
+#from collections import deque
+#from itertools import islice
 
 class WindowGrabber(object):
     def __init__(self, WndClass=None, WndTitle=None, ForceSize=None):
@@ -22,6 +24,7 @@ class WindowGrabber(object):
         self._force_size = ForceSize # Tuple
         self._sys_title = ctypes.windll.user32.GetSystemMetrics(31) # SM_CYSIZE
         self._sys_frame = ctypes.windll.user32.GetSystemMetrics(33) # SM_CYSIZEFRAME
+        self._log = [] # deque(maxlen=100)
         self.sct = mss.mss()
         self.wnd_place = None
 
@@ -205,7 +208,16 @@ class WindowGrabber(object):
 
     def log(self, facil, msg) -> None:
         t = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-        print(f'{Style.BRIGHT}{t}{Style.NORMAL} [{Style.DIM}{facil}{Style.NORMAL}] {msg}')
+        s = f'{Style.BRIGHT}{t}{Style.NORMAL} [{Style.DIM}{facil}{Style.NORMAL}] {msg}'
+        self._log.append(s)
+        print(s)
+
+    def getLog(self, cnt=None) -> list:
+        if cnt is None:
+            return self._log
+        else:
+            return self._log[-cnt:]
 
     def imgToStr(self, img) -> str:
-        return pytesseract.image_to_string(img).strip()
+        ret = pytesseract.image_to_string(img)
+        return ret.strip()

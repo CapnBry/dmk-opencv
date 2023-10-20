@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+import re
 import cv2 as cv
 from colorama import Fore, Back, Style
 
@@ -76,7 +77,7 @@ def assignTask(actor, grabber, forceTask=None) -> bool:
 
         if maxval > 0.88:
             maxloc = (int(grabber.width*0.92), bounds[1] + maxloc[1] + int(grabber.height*0.137))
-            wish = 'wish' if do_wish else grabber.imgToStr(target).strip()
+            wish = 'wish' if do_wish else re.sub('[^a-z ]', '', grabber.imgToStr(target).lower()).strip()
             grabber.log('ACT', f'Clicking {maxloc}={maxval:0.3f} after {x} scrolls ({wish})')
 
             clickGo(grabber, bounds, maxloc)
