@@ -4,11 +4,22 @@ import json
 import cv2 as cv
 from app.main import bp
 from flask import request, make_response, render_template, abort, jsonify
-from flask_cachecontrol import dont_cache, cache_for
 
-@bp.route('/')
+def handleIndexPost():
+    pause = request.values.get('pause')
+    if not pause:
+        return
+    if pause == '0':
+        main.pauseMainThread.paused = False
+    elif pause == '1':
+        main.pauseMainThread.paused = True
+
+@bp.route('/', methods=['GET', 'POST'])
 def index():
-    return render_template('index.html')
+    if request.method == 'POST':
+        handleIndexPost()
+
+    return render_template('index.html', paused=main.pauseMainThread.paused)
 
 @bp.route('/showlog')
 def showlog():
@@ -16,14 +27,14 @@ def showlog():
     return render_template('showlog.html', log=log_as_list)
 
 @bp.route('/ss')
-@dont_cache()
 def getScreenshot():
     img = main.grabber.grab(color=True)
     _, img = cv.imencode('.jpg', img, [int(cv.IMWRITE_JPEG_QUALITY), 80])
 
     response = make_response(img.tobytes())
     response.content_type = 'image/jpg'
-    #response.cache_control.
+    response.cache_control.no_cache = True
+
     return response
 
 @bp.route('/click', methods=['POST'])
@@ -49,9 +60,12 @@ def drag():
     return 'OK', 200
 
 @bp.route('/log')
-@cache_for(seconds=3)
 def getLogJson():
-    return jsonify(main.grabber.getLog(request.values.get('cnt', type=int)))
+    resp = jsonify(main.grabber.getLog(request.values.get('cnt', type=int)))
+    resp.cache_control.no_cache = None
+    resp.cache_control.public = True
+    resp.cache_control.max_age = 3
+    return resp
 
 @bp.route('/shutdown')
 def shutdown():

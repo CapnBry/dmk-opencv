@@ -210,6 +210,8 @@ class WindowGrabber(object):
         t = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         s = f'{Style.BRIGHT}{t}{Style.NORMAL} [{Style.DIM}{facil}{Style.NORMAL}] {msg}'
         self._log.append(s)
+        if len(self._log) > 1000:
+            self._log.pop(0)
         print(s)
 
     def getLog(self, cnt=None) -> list:

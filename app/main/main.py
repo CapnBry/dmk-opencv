@@ -19,7 +19,7 @@ STANDALONE_CLICKS = [
     'magic',
     'happy',
     'attract',
-    #'catbasket',
+    'catbasket',
     #'catmilk',
     # Static items
     'close-novideo',
@@ -54,6 +54,7 @@ PERIODIC_CLICKS = [
     'watchad-magic',
     #'watchad-mystery-radiant',
     'quest-end-reward',
+    'striking-gold', # popup when event starts
     'aristo-tickle',
     'close-missed-ad',
     'close-chestmenu', # chestmenu and charactermenu (should come last!)
@@ -174,6 +175,7 @@ LOOKANDCLICK_CUSTOM = {
     'claim-rewardclaimed': (714, 541),
     'watchad-thanks': (710, 530),
     'levelup': (710, 560),
+    'striking-gold': (715, 462),
     'tickle-complete': clickMoveUp,
     'tasks-reward-tickle': clickTasksReward,
     'watchad-sound': clickAdWait,
@@ -712,6 +714,7 @@ robot = threading.Thread(target=mainLoop, args=(grabber,), name='Main Robot')
 robot.daemon = True
 robot.start()
 
-#robot.join()
-#cv.destroyAllWindows()
+if __name__ == "__main__":
+    robot.join()
+    cv.destroyAllWindows()
 

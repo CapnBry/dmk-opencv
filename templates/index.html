@@ -58,11 +58,33 @@
 {% endblock %}
 {% block content %}
     <img id="ss">
-    <div class="d-flex gap-2 justify-content-center py-1">
-        <button id="drag0" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-left"></i> Left</button>
-        <button id="drag1" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-up"></i> Up</button>
-        <button id="drag3" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-down"></i> Down</button>
-        <button id="drag2" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-right"></i> Right</button>
+    <div class="container py-1">
+        <div class="row align-items-center">
+            <div class="col-7 gap-2">
+                <button id="drag0" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-left"></i> Left</button>
+                <button id="drag1" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-up"></i> Up</button>
+                <button id="drag3" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-down"></i> Down</button>
+                <button id="drag2" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-right"></i> Right</button>
+            </div>
+            <div class="col-3">
+                <form action="{{ url_for('main.index') }}" method="POST">
+                    <button class="btn px-3 {{'btn-secondary' if paused else 'btn-success'}}" name="pause" value="0" type="submit">
+                        <i class="fa fa-play"></i> Run
+                    </button>
+                    <button class="btn px-3 {{'btn-warning' if paused else 'btn-secondary'}}" name="pause" value="1" type="submit">
+                        <i class="fa fa-pause"></i> Pause
+                    </button>
+                </form>
+            </div>
+            <div class="col-2">
+                <a href="{{ url_for('actors.index') }}"><button class="btn btn-secondary" type="button">
+                    <i class="fa fa-bars"></i> Actor List
+                </button></a>
+            </div>
+        </div>
     </div>
-    <pre id="console" class="console"></pre>
+    <div>
+        <pre id="console" class="console"></pre>
+        <a href="{{ url_for('main.showlog') }}">Show full log</a>
+    </div>
 {% endblock %}

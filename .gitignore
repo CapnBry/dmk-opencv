@@ -1,10 +1,11 @@
 .venv
-events/*/*.png
 actors/wish.png
 actors/*/*.png
 actors/*/std
 actors/*/notes.txt
+events/*/*.png
 images/
+prototyping/
 __pycache__/
 ss*.png
 target.png

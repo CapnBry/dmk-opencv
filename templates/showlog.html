@@ -4,8 +4,12 @@
     {{ super() }}
 {% endblock %}
 {% block content %}
-<div>Note: Log is reversed</div>
-<pre id="console" class="console"></pre>
+<main role="main" class="container">
+    <div>Note: Log is reversed</div>
+    <pre id="console" class="console"></pre>
+</main>
+{% endblock %}
+{% block footer %}
 <script type="module" type="text/javascript">
     import { AnsiUp } from "{{ url_for('static', filename='js/ansi_up.js')}}"
 
