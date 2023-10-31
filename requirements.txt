@@ -7,3 +7,5 @@ mss==7.0.1
 pytesseract==0.3.10
 pywin32==306
 PyAutoGUI==0.9.53
+requests==2.31.0
+beautifulsoup4==4.12.2
