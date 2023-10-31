@@ -1,8 +1,12 @@
 .venv
 actors/wish.png
+actors/kq.png
+actors/eq.png
 actors/*/*.png
 actors/*/std
-actors/*/notes.txt
+actors/*/*.txt
+actors/*/actor.json
+actors/*/actor.html
 events/*/*.png
 images/
 prototyping/
