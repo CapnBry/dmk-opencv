@@ -1,14 +1,41 @@
 import os
+import json
 import re
 import shutil
 from app.actors import bp
-from flask import send_file, jsonify, render_template, request, abort
+from flask import send_file, jsonify, render_template, request, abort, redirect, url_for
 
-def getActorDir(a: str) -> str:
-    return os.path.join('actors/', a)
+def getActorDir(actor_id: str) -> str:
+    return os.path.join('actors/', actor_id)
 
-@bp.route('/')
+def fillActorClass(actor_id):
+    dir = getActorDir(actor_id)
+    target_fullfname = os.path.join(dir, 'target.png')
+    actor =  {
+            'id': actor_id,
+            'name': actor_id,
+            'hasTarget': os.path.exists(target_fullfname),
+            'hasAbort': os.path.exists(os.path.join(dir, 'abort.txt')),
+            'hasClip': os.path.exists(os.path.join(dir, 'clip.txt')),
+            'hasEq': os.path.exists(os.path.join(dir, 'eq.txt')),
+            'hasForce': os.path.exists(os.path.join(dir, 'force.txt')),
+            'hasKq': os.path.exists(os.path.join(dir, 'kq.txt')),
+            'hasSkip': os.path.exists(os.path.join(dir, 'skip.txt')),
+            'hasWish': os.path.exists(os.path.join(dir, 'wish.txt')),
+        }
+    # target.png caching
+    # use mtime to preserve the timestamp from the source, not the copy
+    if actor['hasTarget']:
+        mtime = int(os.path.getmtime(target_fullfname))
+        actor['target'] = f'target.png.{mtime}'
+
+    return actor
+
+@bp.route('/', methods=['GET', 'POST'])
 def index():
+    if request.method == 'POST':
+        return actorHandleTasksPost(request.values.get('actor', type=str))
+
     actors = []
     counts = {}
     dir = 'actors'
@@ -16,29 +43,22 @@ def index():
         if a == '__pycache__':
             continue
         if os.path.isdir(os.path.join(dir, a)):
-            actor =  {
-                    'id': a,
-                    'name': a,
-                    'hasTarget': os.path.exists(os.path.join(dir, a, 'target.png')),
-                    'hasAbort': os.path.exists(os.path.join(dir, a, 'abort.txt')),
-                    'hasForce': os.path.exists(os.path.join(dir, a, 'force.txt')),
-                    'hasSkip': os.path.exists(os.path.join(dir, a, 'skip.txt')),
-                    'hasWish': os.path.exists(os.path.join(dir, a, 'wish.txt')),
-                }
+            actor = fillActorClass(a)
+
             # Running total for summary
-            for item in ['Target', 'Abort', 'Force', 'Skip', 'Wish']:
+            for item in ['Target', 'Abort', 'Clip', 'Eq', 'Force', 'Kq', 'Skip', 'Wish']:
                 item_full = f'has{item}'
                 counts[item] = counts.get(item, 0) + (1 if actor[item_full] else 0)
 
             actors.append(actor)
 
-    actors.sort(key=lambda a: a['name'])
+    actors.sort(key=lambda a: a['name'].lower())
     return render_template(f'{request.blueprint}/index.html',
         actors=actors, counts=counts)
 
-@bp.route('/<actor>/portrait')
-def actorPortrait(actor):
-    dir = getActorDir(actor)
+@bp.route('/<actor_id>/portrait')
+def actorPortrait(actor_id):
+    dir = getActorDir(actor_id)
     for k in ['folder.png', 'actor.png']:
         fname = os.path.join(dir, k)
         if os.path.exists(fname):
@@ -48,30 +68,29 @@ def actorPortrait(actor):
             resp.cache_control.max_age = (60 * 60 * 24 * 7)
             return resp
 
-    return 'Not found', 404
+    return redirect(url_for('static', filename='actor_unknown.png'))
 
-@bp.route('/<actor>/taskimg/<fname>')
-def actorTaskImg(actor, fname):
-    dir = getActorDir(actor)
+@bp.route('/<actor_id>/taskimg/<fname>')
+def actorTaskImg(actor_id, fname):
+    dir = getActorDir(actor_id)
+    # target.png has the a numeric suffix to allow caching
+    if fname and fname[-4:] != '.png':
+        fname = 'target.png'
+
     full_fname = os.path.join(dir, (fname or '###'))
     if os.path.exists(full_fname):
         resp = send_file(full_fname, mimetype='image/png')
-        # The active item can chage so do not cache it
+        resp.cache_control.no_cache = None
         resp.cache_control.public = True
-        if fname != 'target.png':
-            resp.cache_control.no_cache = None
-            resp.cache_control.max_age = 3600
-        else:
-            resp.cache_control.no_cache = None
-            resp.cache_control.max_age = 30
+        resp.cache_control.max_age = (60 * 60 * 24 * 7)
         return resp
 
     return 'Not found', 404
 
-def actorHandleTasksPost(actor):
-    dir = getActorDir(actor)
+def actorHandleTasksPost(actor_id):
+    dir = getActorDir(actor_id)
     # Look for action file create/delete
-    for item in ['abort', 'force', 'skip', 'wish']:
+    for item in ['abort', 'clip', 'eq', 'force', 'kq', 'skip', 'wish']:
         ival = request.values.get(item)
         if not ival:
             continue
@@ -85,39 +104,29 @@ def actorHandleTasksPost(actor):
 
     # Change task target
     settask = request.values.get('settask')
-    if settask and settask != 'target.png':
+    if settask and not settask.startswith('target.png'):
         target = os.path.join(dir, 'target.png')
         os.remove(target)
         shutil.copy2(os.path.join(dir, settask), target)
 
-@bp.route('/<actor>/tasks', methods=['GET', 'POST'])
-def actorTasks(actor):
-    if request.method == 'POST':
-        actorHandleTasksPost(actor)
+    return redirect(request.url)
 
-    dir = getActorDir(actor)
+@bp.route('/<actor_id>/tasks', methods=['GET', 'POST'])
+def actorTasks(actor_id):
+    if request.method == 'POST':
+        return actorHandleTasksPost(actor_id)
+
+    dir = getActorDir(actor_id)
+    if not os.path.exists(dir):
+        return 'Not found', 404
+
     tasks = []
-    hasAbort = False
-    hasForce = False
-    hasSkip = False
-    hasWish = False
     notes = None
-    srch = re.compile('^target[a-z\-]*.png$')
+    srch = re.compile('^target[a-z0-9\-]*.png$')
+    actor = fillActorClass(actor_id)
     for entry in os.listdir(dir):
         entryfull = os.path.join(dir, entry)
         if not os.path.isfile(entryfull):
-            continue
-        if entry == 'abort.txt':
-            hasAbort = True
-            continue
-        if entry == 'force.txt':
-            hasForce = True
-            continue
-        if entry == 'skip.txt':
-            hasSkip = True
-            continue
-        if entry == 'wish.txt':
-            hasWish = True
             continue
         if entry == 'notes.txt':
             with open(entryfull, 'r') as f:
@@ -125,19 +134,38 @@ def actorTasks(actor):
             continue
         if not srch.match(entry):
             continue
+        if entry == 'target.png':
+            entry = actor['target']
         tasks.append(entry)
-    # Put the active one up top
-    tasks.sort(key=lambda a: '' if a == 'target.png' else a)
-    return render_template(f'{request.blueprint}/tasks.html',
-        actor=actor, tasks=tasks, notes=notes,
-        hasAbort=hasAbort, hasForce=hasForce, hasSkip=hasSkip, hasWish=hasWish)
 
-def actorFileOp(actor_name, fname):
-    if actor_name is None:
+    # Scraped from wiki
+    json_fname = os.path.join(dir, 'actor.json')
+    if os.path.exists(json_fname):
+        with open(json_fname, 'r') as f:
+            scraped = json.load(f)
+            actor['name'] = scraped['name']
+    else:
+        scraped = None
+
+    # Put the active one up top
+    tasks.sort(key=lambda a: '' if a.startswith('target.png') else a.lower())
+    return render_template(f'{request.blueprint}/tasks.html',
+        a=actor, tasks=tasks, notes=notes, scraped=scraped)
+
+@bp.route('/<actor_id>/rescrape', methods=['POST'])
+def actorReScrape(actor_id):
+    from scraper import scrapeActor
+    scrapeActor(actor_id, request.values.get('remote_id', type=str, default=None),
+        request.values.get('force', type=bool, default=False))
+
+    return redirect(url_for('actors.actorTasks', actor_id=actor_id))
+
+def actorFileOp(actor_id, fname):
+    if actor_id is None:
         abort(400)
 
     enable = request.values.get('enable', type=int)
-    full_fname = os.path.join(getActorDir(actor_name), fname)
+    full_fname = os.path.join(getActorDir(actor_id), fname)
     if enable is None:
         return '1' if os.path.exists(full_fname) else '0', 200
 
@@ -151,14 +179,14 @@ def actorFileOp(actor_name, fname):
 
     return 'OK', 200
 
-@bp.route('/<actor>/skip')
-def actorSkip(actor):
-    return actorFileOp(actor, 'skip.txt')
+@bp.route('/<actor_id>/skip')
+def actorSkip(actor_id):
+    return actorFileOp(actor_id, 'skip.txt')
 
-@bp.route('/<actor>/abort')
-def actorAbort(actor):
-    return actorFileOp(actor, 'abort.txt')
+@bp.route('/<actor_id>/abort')
+def actorAbort(actor_id):
+    return actorFileOp(actor_id, 'abort.txt')
 
-@bp.route('/<actor>/wish')
-def actorWish(actor):
-    return actorFileOp(actor, 'wish.txt')
+@bp.route('/<actor_id>/wish')
+def actorWish(actor_id):
+    return actorFileOp(actor_id, 'wish.txt')

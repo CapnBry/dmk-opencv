@@ -135,7 +135,10 @@ class WindowGrabber(object):
         # self.mouseUp(x, y)
         # time.sleep(interval)
 
-    def scroll(self, amt, x=None, y=None):
+    def scroll(self, amt, x=None, y=None, center=False):
+        if center:
+            x = self.width // 2
+            y = self.height // 2
         if not (x is None or y is None):
             self.moveTo(x, y)
         # negative for down
@@ -171,7 +174,7 @@ class WindowGrabber(object):
 
         for i in range(cnt):
             sendinput._sendMouseEvent(*dirVector, sendinput.MOUSEEVENTF_MOVE) # relative move
-            time.sleep(0.034)
+            time.sleep(0.017)
         sendinput._sendMouseEvent(0, 0, sendinput.MOUSEEVENTF_LEFTUP)
         time.sleep(0.067)
 

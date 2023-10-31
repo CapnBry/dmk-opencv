@@ -13,7 +13,7 @@
 
         function reloadConsole()
         {
-            fetch("{{ url_for('main.getLogJson') }}?cnt=5")
+            fetch("{{ url_for('main.getLogJson', cnt=5) }}")
                 .then((response) => response.json())
                 .then((log) => {
                     let ansi_up = new AnsiUp();
@@ -35,18 +35,25 @@
 
         function sendClick(e)
         {
-            ssAction("{{ url_for('main.click') }}", {'x': e.offsetX, 'y': e.offsetY});
+            let x = e.offsetX * this.naturalWidth / this.width | 0;
+            let y = e.offsetY * this.naturalWidth / this.width | 0;
+            ssAction("{{ url_for('main.click') }}", {'x': x, 'y': y});
         }
 
         function sendDrag(e)
         {
             let dir = parseInt(this.id.substr(-1));
-            ssAction("{{ url_for('main.drag') }}", {dir, 'amt': 500});
+            let amt;
+            if ([0, 2].includes(dir))
+                amt = 1200;
+            else
+                amt = 490;
+            ssAction("{{ url_for('main.drag') }}", {dir, amt});
         }
 
         function sendScroll(e)
         {
-            let amt = parseInt(this.id.substr(-1)) == 0 ? 500 : -500;
+            let amt = parseInt(this.id.substr(-1)) == 0 ? 600 : -600;
             ssAction("{{ url_for('main.scroll') }}", {amt});
         }
 
@@ -65,23 +72,23 @@
 </script>
 {% endblock %}
 {% block content %}
-    <img id="ss">
+    <img id="ss" width="1080">
     <div class="container py-1">
         <div class="row align-items-center">
             <div class="col-7 gap-2">
-                <button id="drag0" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-left"></i> Left</button>
-                <button id="drag1" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-up"></i> Up</button>
-                <button id="drag3" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-down"></i> Down</button>
-                <button id="drag2" class="btn btn-primary px-3" type="button"><i class="fa fa-arrow-right"></i> Right</button>
-                <button id="scroll0" class="btn btn-primary px-3 ps-9" type="button"><i class="fa fa-caret-up"></i> ScrlUp</button>
-                <button id="scroll1" class="btn btn-primary px-3" type="button"><i class="fa fa-caret-down"></i> ScrlDn</button>
+                <button id="drag0" class="btn btn-primary px-2 my-1" type="button"><i class="fa fa-arrow-left"></i> Left</button>
+                <button id="drag1" class="btn btn-primary px-2 my-1" type="button"><i class="fa fa-arrow-up"></i> Up</button>
+                <button id="drag3" class="btn btn-primary px-2 my-1" type="button"><i class="fa fa-arrow-down"></i> Down</button>
+                <button id="drag2" class="btn btn-primary px-2 my-1" type="button"><i class="fa fa-arrow-right"></i> Right</button>
+                <button id="scroll0" class="btn btn-primary px-2 ps-9 my-1" type="button"><i class="fa fa-caret-up"></i> ScrlUp</button>
+                <button id="scroll1" class="btn btn-primary px-2 my-1" type="button"><i class="fa fa-caret-down"></i> ScrlDn</button>
             </div>
             <div class="col-3">
                 <form action="{{ url_for('main.index') }}" method="POST">
-                    <button class="btn px-3 {{'btn-secondary' if paused else 'btn-success'}}" name="pause" value="0" type="submit">
+                    <button class="btn px-2 {{'btn-secondary' if paused else 'btn-success'}}" name="pause" value="0" type="submit">
                         <i class="fa fa-play"></i> Run
                     </button>
-                    <button class="btn px-3 {{'btn-warning' if paused else 'btn-secondary'}}" name="pause" value="1" type="submit">
+                    <button class="btn px-2 {{'btn-warning' if paused else 'btn-secondary'}}" name="pause" value="1" type="submit">
                         <i class="fa fa-pause"></i> Pause
                     </button>
                 </form>

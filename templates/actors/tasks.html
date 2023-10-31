@@ -2,17 +2,32 @@
 {% block title %}{{actor}} Actor Tasks - Dmk{% endblock %}
 {% block content %}
 <main role="main" class="container">
-<form action="{{ url_for('actors.actorTasks', actor=actor) }}" method="POST">
+<form action="{{ url_for('actors.actorTasks', actor_id=a.id) }}" method="POST">
 <div class="container">
     <div class="row align-items-center justify-content-between">
-        <div class="col-3"><h2 class="text-capitalize"><img src="{{ url_for('actors.actorPortrait', actor=actor) }}">{{ actor }}</h2></div>
-        <div class="col-6">
-            <div class="gap-2 justify-content-center py-1">
-                    <button class="btn px-4 {{ 'btn-warning' if hasWish else 'btn-secondary' }}" name="wish" value="{{ '0' if hasWish else '1' }}" type="submit">Wish</button>
-                    <button class="btn px-4 {{ 'btn-warning' if hasSkip else 'btn-secondary' }}" name="skip" value="{{ '0' if hasSkip else '1' }}" type="submit">Skip</button>
-                    <button class="btn px-4 {{ 'btn-danger' if hasAbort else 'btn-secondary' }}" name="abort" value="{{ '0' if hasAbort else '1' }}" type="submit">Abort</button>
-                    <!-- <button class="btn px-4 {{ 'btn-danger' if hasForce else 'btn-secondary' }}" name="force" value="{{ '0' if hasForce else '1' }}" type="submit">Force</button> -->
+        <div class="col">
+            <h2 class="text-capitalize"><img src="{{ url_for('actors.actorPortrait', actor_id=a.id) }}">{{ a.name }}</h2>
+        </div>
+        <div class="col">
+            <div class="py-1">
+                    <button class="btn px-4 {{ 'btn-warning' if a.hasWish else 'btn-secondary' }}" name="wish" value="{{ '0' if a.hasWish else '1' }}" type="submit">Wish</button>
+                    <button class="btn px-4 {{ 'btn-warning' if a.hasSkip else 'btn-secondary' }}" name="skip" value="{{ '0' if a.hasSkip else '1' }}" type="submit">Skip</button>
+                    <button class="btn px-4 {{ 'btn-danger' if a.hasAbort else 'btn-secondary' }}" name="abort" value="{{ '0' if a.hasAbort else '1' }}" type="submit">Abort</button>
+                    <button class="btn px-2 {{ 'btn-warning' if a.hasKq else 'btn-secondary' }}" name="kq" value="{{ '0' if a.hasKq else '1' }}" type="submit" title="Kingdom Quest">
+                        <i class="fa fa-shield"></i>
+                    </button>
+                    <button class="btn px-2 {{ 'btn-warning' if a.hasEq else 'btn-secondary' }}" name="eq" value="{{ '0' if a.hasEq else '1' }}" type="submit" title="Event Quest">
+                        <i class="fa fa-file-text-o"></i>
+                    </button>
+                    <button class="btn px-2 {{ 'btn-warning' if a.hasClip else 'btn-secondary' }}" name="clip" value="{{ '0' if a.hasClip else '1' }}" type="submit" title="Clip All">
+                        <i class="fa fa-refresh"></i>
+                    </button>
+                    <!-- <button class="btn px-4 {{ 'btn-danger' if a.hasForce else 'btn-secondary' }}" name="force" value="{{ '0' if a.hasForce else '1' }}" type="submit">Force</button> -->
+                    <!-- <button class="btn px-2 btn-secondary" type="submit">
+                        <i class="fa fa-refresh btn-secondary"></i>
+                    </button> -->
             </div>
+            <div><a href="{{ url_for('actors.index', _anchor=a.id) }}">Return to list</a></div>
         </div>
     </div>
 </div>
@@ -30,10 +45,10 @@
         <tr>
             <th scope="row" class="text-center">
                 <button class="btn px-0 py-0" name="settask" value="{{t}}" type="submit">
-                    <i class="fa fa-2 {{ 'fa-check-circle text-success' if t=='target.png' else 'fa-times-circle-o text-secondary' }}"></i>
+                    <i class="fa fa-2 {{ 'fa-check-circle text-success' if t.startswith('target.png') else 'fa-times-circle-o text-secondary' }}"></i>
                 </button>
             </th>
-            <td><img src="{{ url_for('actors.actorTaskImg', actor=actor, fname=t) }}"></td>
+            <td><img src="{{ url_for('actors.actorTaskImg', actor_id=a.id, fname=t) }}"></td>
             <th scope="row">{{t}}</th>
         </tr>
 {% endfor %}
@@ -51,9 +66,60 @@
   {% endfor %}
 </ul>
 {% endif %}
+{% if scraped and scraped.activities %}
+<h3>Activities</h3>
+    <table class="table table-hover">
+        <thead><tr>
+            <th role="col">Duration</th>
+            <th role="col">Target</th>
+            <th role="col">Tokens</th>
+            <th role="col">Requires</th>
+        </tr></thead>
+        <tbody>
+    {% for activity in scraped.activities %}
+        <tr>
+            <td>{{ activity.time }}</td>
+            <td>{{ activity.target }}<br/>
+                <small>Level {{ activity.level }}</small>
+            </td>
+            <td>
+                <small>{{ '<br/>'.join(activity.tokens) | safe }}</small>
+            </td>
+            <td>
+                {% if activity.companion %}
+                    <a href="{{ url_for('actors.actorTasks', actor_id=activity.companion.id) }}">{{ activity.companion.id }}</a>
+                    <small>lvl {{ activity.companion.level }}</small>
+                    <br/>
+                {% endif %}
+                <small>{{ '<br/>'.join(activity.requires) | safe }}</small>
+            </td>
+        </tr>
+{% endfor %}
+        </tbody>
+    </table>
+{% endif %}
+<form class="row g-2 align-items-center" action="{{ url_for('actors.actorReScrape', actor_id=a.id) }}" method="POST">
+    <div class="col">
+        <div class="input-group">
+            <label class="visually-hidden" for="remote_id">Remote ID</label>
+            <div class="input-group-text">Remote ID</div>
+            <input type="text" class="form-control" name="remote_id" id="remote_id" value="{{ scraped.remote_id if scraped else a.id }}">
+        </div>
+    </div>
+
+    <div class="col-auto">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="force" name="force">
+          <label class="form-check-label" for="force">
+            Force refresh
+          </label>
+        </div>
+    </div>
+
+    <div class="col">
+        <button type="submit" class="btn btn-primary">Scrape</button>
+    </div>
+</form>
+<div><a href="{{ url_for('actors.index', _anchor=a.id) }}">Return to list</a></div>
 </main>
-{% endblock %}
-{% block footer %}
-<div><a href="{{ url_for('actors.index') + '#' + actor }}">Return to list</a></div>
-{{ super() }}
 {% endblock %}

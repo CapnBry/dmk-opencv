@@ -20,10 +20,10 @@ STANDALONE_CLICKS = [
     'happy',
     'attract',
     'catbasket',
-    #'catmilk',
+    'catmilk',
     # Static items
     'close-novideo',
-    'free',
+    #'free',
     'swipe',
     'clear',
     'claim',
@@ -31,7 +31,6 @@ STANDALONE_CLICKS = [
     'watchad-mystery-parade',
     'watchad-sound',
     'watchad-thanks',
-    'claim-calendar',
     'levelup',
     'collect-bronze-silver',
     'levelup-char',
@@ -39,10 +38,9 @@ STANDALONE_CLICKS = [
 
 PERIODIC_CLICKS = [
     'reward-streak',
+    'enchant-complete',
     'collect-calendar',
-    'claim-gold',
-    'claim-milestone',
-    'claim-rewardclaimed',
+    'claim-background',
     'levelup-char-tickle',
     'watchad-gem-tickle',
     'tasks-reward-tickle',
@@ -52,7 +50,6 @@ PERIODIC_CLICKS = [
     'close-popupad-03',
     'watchad-bronze',
     'watchad-magic',
-    #'watchad-mystery-radiant',
     'quest-end-reward',
     'striking-gold', # popup when event starts
     'aristo-tickle',
@@ -68,32 +65,39 @@ class Actor:
     needle: np.array
     handler: any
 
-def clickMoveUp(grabber, loc) -> bool:
-    grabber.click(loc[0], loc[1], interval=0.033)
-    # To account for the top parade float going behind the EC, drag to the side sometimes
-    if random.randrange(4) == 0:
-        # clicking the actor portrait takes a while to settle the further you are
-        time.sleep(0.800)
+def clickParadeComplete(grabber, loc) -> bool:
+    # To account for the top parade float going behind the EC, drag to the side or down
+    # clicking the actor portrait takes a while to settle the further you are
+    grabber.click(loc[0], loc[1], interval=3.0)
+    rand = random.randrange(3)
+    if rand == 0:
+        # top->bottom, move the whole parade lower away from top of screen
+        windowDrag(grabber, 1, 200)
+    elif rand == 1:
+        # right->left, move out from under the EC HUD
         windowDrag(grabber, 2, 200)
-    # pyautogui.hotkey('a', interval=0.5)
+    else:
+        # Just take what we got
+        pass
+
     return True
 
 def clickAdWait(grabber, loc) -> bool:
     # Click the sound off and then assume a 40s ad, and click close
     grabber.click(loc[0], loc[1], interval=0.020)
     time.sleep(40.0)
-    grabber.click(1393, 48, interval=0.020) #sizedep
+    grabber.click(1393, 48, interval=0.020)
     return True
 
 def clickRewardStreak(grabber, loc) -> bool:
-    img_calendar = grabber.grab(bounds=(0,0, 1050, 630)) #sizedep
+    img_calendar = grabber.grab(bounds=(0,0, 1050, 630))
     return lookAndClick(grabber, 'collect-calendar', img_calendar, periodicCheck.img_periodic['collect-calendar'], 0.80)
 
 def clickCheckGreen(grabber, loc) -> bool:
     # actually checks that it is not gray
-    #bounds = (loc[0] - 90, loc[1] - 25, loc[0] - 45, loc[1] + 25) #sizedep
-    #bounds = (loc[0] - 20, loc[1] - 30, loc[0] + 20, loc[1] - 10) #sizedep
-    bounds = (loc[0] - 60, loc[1] - 24, loc[0] + 60, loc[1] - 12) #sizedep
+    #bounds = (loc[0] - 90, loc[1] - 25, loc[0] - 45, loc[1] + 25)
+    #bounds = (loc[0] - 20, loc[1] - 30, loc[0] + 20, loc[1] - 10)
+    bounds = (loc[0] - 60, loc[1] - 24, loc[0] + 60, loc[1] - 12)
     avg_color = grabber.grabColor(bounds)[0:3]
     how_colorful = np.std(avg_color)
     #print(f'Avg color: {avg_color} dev={how_colorful}')
@@ -106,16 +110,16 @@ def clickCheckGreen(grabber, loc) -> bool:
 
 def clickLevelupChar(grabber, loc) -> bool:
     if loc[0] < 700:
-        grabber.click(1240, 340) #sizedep
+        grabber.click(1240, 340)
     else:
-        grabber.click(250, 340) #sizedep
+        grabber.click(250, 340)
     return True
 
 def clickGemTickle(grabber, loc) -> bool:
     # click the tickle, the screen will scroll over so give it time
     grabber.click(loc[0], loc[1], interval=3.0)
     # click the theater, will open confirmation / not avail message
-    grabber.click(715, 290) #sizedep
+    grabber.click(715, 290)
     # rely on standalone to click the button
     return True
 
@@ -137,7 +141,7 @@ def clickTasksReward(grabber, loc) -> bool:
     # season pass:  71.45538462 195.8174359  229.43538462 255 (gold border)
     # GO:          251.98461538 213.92512821  49.41692308 255 (blue)
     # Grey GO:     185.39128205 186.11897436 185.39128205 255 (gray)
-    avg_color = grabber.grabColor((1055, 214, 1205, 227)) #sizedep
+    avg_color = grabber.grabColor((1055, 214, 1205, 227))
     iscollect =  avg_color[0] < 60 and avg_color[1] > 220 and (120 < avg_color[2] < 140)
     #print(f'{avg_color} = {iscollect}')
     #return True
@@ -145,15 +149,15 @@ def clickTasksReward(grabber, loc) -> bool:
     if iscollect:
         # not season pass, collect button is right on the top
         # "Collect" button on the top left
-        grabber.click(1125, 240, interval=1.0) #sizedep
+        grabber.click(1125, 240, interval=1.0)
         # Close dialog
-        grabber.click(1385, 45, interval=0.033) #sizedep
+        grabber.click(1385, 45, interval=0.033)
         # leave window open to get the reward
     else:
         # is season pass, click roughly the center of the free teir list (X=770 for next locked?)
-        grabber.click(640, 445, interval=1.0) #sizedep
+        grabber.click(640, 445, interval=1.0)
         # Claim button on "Reward Claimed" popup
-        grabber.click(725, 550, interval=0.033) #sizedep
+        grabber.click(725, 550, interval=0.033)
 
     return True
 
@@ -169,37 +173,34 @@ def clickAristoTickle(grabber, loc) -> bool:
 
 LOOKANDCLICK_CUSTOM = {
     'watchad-bonus': (870, 525),
-    'claim-calendar': (710, 530),
-    'claim-gold': (740, 540),
-    'claim-milestone': (712, 547),
-    'claim-rewardclaimed': (714, 541),
+    'claim-background': (714, 541),
+    'enchant-complete': (720, 560),
     'watchad-thanks': (710, 530),
     'levelup': (710, 560),
     'striking-gold': (715, 462),
-    'tickle-complete': clickMoveUp,
     'tasks-reward-tickle': clickTasksReward,
     'watchad-sound': clickAdWait,
     'reward-streak': clickRewardStreak,
     'collect-bronze-silver': clickCheckGreen,
     'watchad-bronze': clickCheckGreen,
     'watchad-magic': clickCheckGreen,
-    #'watchad-mystery-radiant': clickCheckGreen, # not used (aristo-tickle)
     'levelup-char': clickLevelupChar,
     'watchad-gem-tickle': clickGemTickle,
+    'tickle-parade-complete': clickParadeComplete,
     'tickle-quest-avail': clickQuestStartDialog,
     'quest-end-reward': clickLevelupChar,
     'aristo-tickle': clickAristoTickle,
 }
 
-def clickAllCommon(grabber: DmkGrabber) -> None:
-    grabber.log('LAC', Fore.RED+'** Nuclear clicking **'+Fore.WHITE)
+def clickAllCommon(grabber: DmkGrabber, src: str) -> None:
+    grabber.log('LAC', Fore.RED+'** Nuclear clicking: {src} **'+Fore.WHITE)
 
     # Save a screenshot for later ss-yyyymmdd-hhnnss.png
     ss = grabber.grab(color=True)
     cv.imwrite(datetime.datetime.now().strftime('ss-%Y%m%d-%H%M%S.png'), ss)
 
 def clickAllLAC(grabber):
-    clickAllCommon(grabber)
+    clickAllCommon(grabber, 'AllLAC')
 
     # Click all the items that have a defined place
     for v in LOOKANDCLICK_CUSTOM.values():
@@ -207,7 +208,7 @@ def clickAllLAC(grabber):
             grabber.click(v[0], v[1], interval=0.100)
 
 def clickEverywhere(grabber):
-    clickAllCommon(grabber)
+    clickAllCommon(grabber, 'Everywhere')
 
     width = grabber.width
     height = grabber.height
@@ -243,6 +244,8 @@ def lookAndClick(grabber, name, haystack, needle, threshold=0.97, extraWait=Fals
                     clickEverywhere(grabber)
                 elif lookAndClick.lastMatchCnt == 20:
                     clickAllLAC(grabber)
+                elif lookAndClick.lastMatchCnt == 15:
+                    grabber.scroll(-2000, center=True)
                 elif lookAndClick.lastMatchCnt > 10:
                     time.sleep(30.0)
             else:
@@ -263,19 +266,19 @@ def windowDrag(grabber, dir, amount):
 
     if dir == 0:
         # Left to Right
-        startPos = (150, 320) #sizedep
+        startPos = (150, 320)
         moveParams = (MOVE_PER_STEP, 0)
     elif dir == 1:
         # Top to Bottom
-        startPos = (573, 65) #sizedep
+        startPos = (573, 65)
         moveParams = (0, MOVE_PER_STEP)
     elif dir == 2:
         # Right to Left
-        startPos = (1290, 301) #sizedep
+        startPos = (1290, 301)
         moveParams = (-MOVE_PER_STEP, 0)
     else:
         # Bottom to Top (3)
-        startPos = (573, 600) #sizedep
+        startPos = (573, 600)
         moveParams = (0, -MOVE_PER_STEP)
         # Bottom to top always requires more?
         amount = (amount * 1.1) + (2 * MOVE_PER_STEP)
@@ -407,11 +410,11 @@ def actorCheckNew(grabber):
     # If no good match, create a new actor
     isNew = bestMatch['val'] < 0.9
 
-    # sanitize the name
-    name = name.lower()
-    name = re.sub('[^a-z]', '', name)
-    if name[-3:] == 'lvl':
-        name = name[:-3]
+    # sanitize the name to just upper/lower and replace internal space with underscore
+    name = re.sub('[^a-zA-Z ]', '', name).strip()
+    if name[-3:].lower() == 'lvl':
+        name = name[:-3].strip()
+    name = name.replace(' ', '_')
 
     grabber.log('ACT', f'New actor {name}: {isNew} (closest was {bestMatch["name"]}={bestMatch["val"]:0.3f})')
 
@@ -443,6 +446,9 @@ def ticklerCheck(grabber) -> int:
     # Complete Task
     foundAnything = False
     expediteNextActorCheck = False
+    if lookAndClick(grabber, 'tickle-parade-complete', ss_corner, ticklerCheck.img_tickparadecomplete):
+        # must return "no tickle" or will just come right back into this function and find the tickle-complete
+        return 0
     if lookAndClick(grabber, 'tickle-complete', ss_corner, ticklerCheck.img_tickcomplete):
         foundAnything = True
     elif actorsCheckAssign(grabber, ss_corner):
@@ -548,7 +554,7 @@ def lookAndClickInit(grabber):
     lookAndClick.lastMatchCnt = 0
 
 def chatbubbleVisible(ss_all):
-    dialog_crop = ss_all[183:203,467:921] #sizedep
+    dialog_crop = ss_all[183:203,467:921]
     avg = np.average(dialog_crop, axis=0)
     avg = np.average(avg, axis=0)
     return avg > 254.0
@@ -565,7 +571,7 @@ def chatbubbleProcess(grabber):
             return
 
         grabber.log('PCK', f'Chat bubble active')
-        grabber.click(720, 300) # 720 if maxval > 0.90 else 1280, 300) #sizedep
+        grabber.click(720, 300) # 720 if maxval > 0.90 else 1280, 300)
         time.sleep(2)
 
 def periodicCheck(grabber):
@@ -602,6 +608,7 @@ def periodicInit(grabber):
 
 def tickleInit(grabber):
     ticklerCheck.img_tickcomplete = cv.imread('images/tickle-complete.png', cv.IMREAD_GRAYSCALE)
+    ticklerCheck.img_tickparadecomplete = cv.imread('images/tickle-parade-complete.png', cv.IMREAD_GRAYSCALE)
     ticklerCheck.img_tickactive = cv.imread('images/tickle-active.png', cv.IMREAD_GRAYSCALE)
     ticklerCheck.img_tickqavail = cv.imread('images/tickle-quest-avail.png', cv.IMREAD_GRAYSCALE)
     ticklerCheck.failCnt = 0
