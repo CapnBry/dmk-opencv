@@ -39,7 +39,7 @@ def abortSpam(grabber, fname):
 def clipOneTask(grabber, bounds):
     item = grabber.grab(bounds=bounds, color=True)
     # cv.imshow('Result', item)
-    # cv.waitKey(3000)
+    # cv.waitKey(2000)
     item_gray = cv.cvtColor(item, cv.COLOR_BGR2GRAY)
     #_, item_gray = cv.threshold(item_gray, 127, 255, cv.THRESH_BINARY)
     # cv.imshow('Result', item_gray)
@@ -48,8 +48,12 @@ def clipOneTask(grabber, bounds):
     # sanitize
     item_text = re.sub('[^a-z ]', '', item_text).strip()
 
-    # clip off the start of the search image and make it short / skip icon
-    item = item[0:, 0:200]
+    # clip off the end of the search image
+    item = item[0:, 0:210]
+    # clip off the start of the gray image so it won't have any icon
+    item_gray = item_gray[0:, 44:]
+    # cv.imshow('Result', item_gray)
+    # cv.waitKey(2000)
 
     return item, item_gray, item_text
 
@@ -60,7 +64,7 @@ def deleteFilesGlob(pattern):
 def clipAllTasks(grabber, dest_path):
     deleteFilesGlob(os.path.join(dest_path, 'target-auto-??.png'))
 
-    bounds_first = (900, 186, 900+400, 186+30)
+    bounds_first = (896, 186, 896+405, 186+29)
     bounds_second = (bounds_first[0], bounds_first[1]+172, bounds_first[2], bounds_first[3]+172)
 
     lastGrab = None
