@@ -1,5 +1,6 @@
 import sys
 import os
+from enum import Enum
 import threading
 import time
 import datetime
@@ -75,7 +76,7 @@ def clickParadeComplete(grabber, loc) -> bool:
         windowDrag(grabber, 1, 200)
     elif rand == 1:
         # right->left, move out from under the EC HUD
-        windowDrag(grabber, 2, 200)
+        windowDrag(grabber, 2, 220)
     else:
         # Just take what we got
         pass
@@ -216,6 +217,9 @@ def clickEverywhere(grabber):
         for x in range(0.05, 0.95, 0.1):
             grabber.click(int(x * width), int(y * height), interval=0.100)
 
+def forcePeriodicCheck():
+    periodicCheck.lastCheck = 0
+
 def lookAndClick(grabber, name, haystack, needle, threshold=0.97, extraWait=False):
     match, maxval, maxloc = grabber.search(haystack, needle, cv.TM_CCOEFF_NORMED, True)
 
@@ -245,7 +249,11 @@ def lookAndClick(grabber, name, haystack, needle, threshold=0.97, extraWait=Fals
                 elif lookAndClick.lastMatchCnt == 20:
                     clickAllLAC(grabber)
                 elif lookAndClick.lastMatchCnt == 15:
+                    # maybe missed scrolling out on app launch
                     grabber.scroll(-2000, center=True)
+                elif lookAndClick.lastMatchCnt == 5:
+                    # maybe a periodic in the way
+                    forcePeriodicCheck()
                 elif lookAndClick.lastMatchCnt > 10:
                     time.sleep(30.0)
             else:
@@ -424,6 +432,8 @@ def actorCheckNew(grabber):
         if not os.path.exists(newdir):
             os.mkdir(newdir)
             cv.imwrite(os.path.join(newdir, 'actor.png'), img_portrait)
+            with open(os.path.join(newdir, 'clip.txt'), "w") as f:
+                pass
             # Reload the list of actors
             actorsCheckAssign.actors = actorsLoad(grabber)
 
@@ -444,32 +454,32 @@ def ticklerCheck(grabber) -> int:
         return 0
 
     # Complete Task
-    foundAnything = False
-    expediteNextActorCheck = False
     if lookAndClick(grabber, 'tickle-parade-complete', ss_corner, ticklerCheck.img_tickparadecomplete):
         # must return "no tickle" or will just come right back into this function and find the tickle-complete
         return 0
+
+    assignResult = ActorAssignResult.NOTCHECKED
     if lookAndClick(grabber, 'tickle-complete', ss_corner, ticklerCheck.img_tickcomplete):
-        foundAnything = True
-    elif actorsCheckAssign(grabber, ss_corner):
+        assignResult = ActorAssignResult.SKIP
+    if assignResult != ActorAssignResult.SKIP:
         # Assign new task if the tickle is gone
-        foundAnything = True
-        expediteNextActorCheck = True
-    elif lookAndClick(grabber, 'tickle-quest-avail', ss_corner, ticklerCheck.img_tickqavail):
+        assignResult = actorsCheckAssign(grabber, ss_corner)
+    if assignResult != ActorAssignResult.ASSIGNED:
         # must come after actor check because overlaps with chest/parade
-        foundAnything = True
+        if lookAndClick(grabber, 'tickle-quest-avail', ss_corner, ticklerCheck.img_tickqavail):
+            assignResult = ActorAssignResult.SKIP
 
     # If the tickactive is present but no other template matches, it is possible
     # this is a new actor that needs to be added
-    if foundAnything:
-        ticklerCheck.failCnt = 0
-    else:
+    if assignResult == ActorAssignResult.NOTFOUND:
         ticklerCheck.failCnt += 1
         if ticklerCheck.failCnt == 5:
             if actorCheckNew(grabber):
                 ticklerCheck.failCnt = 0
+    elif assignResult != ActorAssignResult.NOTCHECKED:
+        ticklerCheck.failCnt = 0
 
-    return 1 if expediteNextActorCheck else 2
+    return 1 if assignResult == ActorAssignResult.ASSIGNED else 2
 
 def actorsLoad(grabber):
     retVal = []
@@ -497,11 +507,18 @@ def actorsSort():
     # Actors that get used the most move to the front
     actorsCheckAssign.actors.sort(key=lambda a: a.count, reverse=True)
 
-def actorsCheckAssign(grabber:DmkGrabber, ss):
+class ActorAssignResult(Enum):
+    NOTCHECKED = 0  # interval has not expired
+    ASSIGNED = 1    # Actor was found and task was assigned
+    SKIP = 2        # Actor found but skipped
+    NOTFOUND = 3    # Could not find matching actor
+
+def actorsCheckAssign(grabber:DmkGrabber, ss) -> ActorAssignResult:
     now = time.monotonic()
     if now - actorsCheckAssign.lastActorAssignCheck < (30 if actorsCheckAssign.lastWasSkip else 5):
-        return False
+        return ActorAssignResult.NOTCHECKED
 
+    actorsCheckAssign.lastWasSkip = False
     for a in actorsCheckAssign.actors:
         _, maxval, maxloc = grabber.search(ss, a.needle, returnCenter=True)
         #grabber.log('ACA', f'{a}={maxval:0.3f}')
@@ -532,13 +549,14 @@ def actorsCheckAssign(grabber:DmkGrabber, ss):
                 a.count += 1
                 actorsSort()
                 # Need to run again to refresh ss
-                return True
+                return ActorAssignResult.ASSIGNED
+            break
         elif maxval > 0.90:
             grabber.log('CLOSE', f'Actor {a.name}={maxval}')
 
     # Stop checking once no actor was found
     actorsCheckAssign.lastActorAssignCheck = now
-    return False
+    return ActorAssignResult.SKIP if actorsCheckAssign.lastWasSkip else ActorAssignResult.NOTFOUND
 
 def actorsInit(grabber):
     actorsCheckAssign.lastActorAssignCheck = 0
