@@ -29,10 +29,10 @@ def showlog():
 @bp.route('/ss')
 def getScreenshot():
     img = main.grabber.grab(color=True)
-    _, img = cv.imencode('.jpg', img, [int(cv.IMWRITE_JPEG_QUALITY), 80])
+    _, img = cv.imencode('.webp', img, [int(cv.IMWRITE_WEBP_QUALITY), 10])
 
     response = make_response(img.tobytes())
-    response.content_type = 'image/jpg'
+    response.content_type = 'image/webp'
     response.cache_control.no_cache = True
 
     return response
