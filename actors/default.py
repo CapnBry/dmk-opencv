@@ -49,9 +49,9 @@ def clipOneTask(grabber, bounds):
     item_text = re.sub('[^a-z ]', '', item_text).strip()
 
     # clip off the end of the search image
-    item = item[0:, 0:210]
+    item = item[:, 0:250]
     # clip off the start of the gray image so it won't have any icon
-    item_gray = item_gray[0:, 44:]
+    item_gray = item_gray[:, 44:]
     # cv.imshow('Result', item_gray)
     # cv.waitKey(2000)
 
@@ -68,6 +68,7 @@ def clipAllTasks(grabber, dest_path):
     bounds_second = (bounds_first[0], bounds_first[1]+172, bounds_first[2], bounds_first[3]+172)
 
     lastGrab = None
+    lastGrabTime = 0
     exitAfterThis = False
     taskIdx = 0
     while taskIdx < 30:
@@ -92,8 +93,15 @@ def clipAllTasks(grabber, dest_path):
             if len(word) > 0:
                 nameguess += word[0]
 
+        # wait at least 1 second to get a different mtime on the file
+        now = time.monotonic()
+        remain = 1.0 - (now - lastGrabTime)
+        if remain > 0.0:
+            time.sleep(remain)
+
         grabber.log('CAT', f'Clipped task [{item_text}]={nameguess}')
         cv.imwrite(os.path.join(dest_path, f'target-auto-{taskIdx:02d}.png'), item)
+        lastGrabTime = time.monotonic()
         if exitAfterThis:
             break
 
@@ -104,15 +112,6 @@ def clipAllTasks(grabber, dest_path):
 
 def assignTask(actor, grabber, forceTask=None) -> bool:
     path_base = os.path.join(os.path.dirname(__file__), actor)
-    do_skip = os.path.exists(os.path.join(path_base, 'skip.txt'))
-    if do_skip:
-        # Close the task dialog
-        grabber.click(1390, 102, interval=0.5)
-        return True
-
-    # Abort
-    if os.path.exists(os.path.join(path_base, 'abort.txt')):
-        abortSpam(grabber, os.path.join(path_base, 'abort.txt')) # exits
 
     # ClipAll
     if os.path.exists(os.path.join(path_base, 'clip.txt')):
@@ -121,6 +120,15 @@ def assignTask(actor, grabber, forceTask=None) -> bool:
         # Close the tasks window
         grabber.click(1390, 102, interval=0.5)
         return False
+
+    if os.path.exists(os.path.join(path_base, 'skip.txt')):
+        # Close the task dialog
+        grabber.click(1390, 102, interval=0.5)
+        return True
+
+    # Abort
+    if os.path.exists(os.path.join(path_base, 'abort.txt')):
+        abortSpam(grabber, os.path.join(path_base, 'abort.txt')) # exits
 
     # Bounds of the task area, first 2 items only
     bounds = (864, 166, 1396, 492)
