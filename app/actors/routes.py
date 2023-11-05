@@ -2,11 +2,17 @@ import os
 import json
 import re
 import shutil
+import app.main.main as main
 from app.actors import bp
 from flask import send_file, jsonify, render_template, request, abort, redirect, url_for
 
 def getActorDir(actor_id: str) -> str:
     return os.path.join('actors/', actor_id)
+
+def getTargetCacheKey(base_fname, full_fname) -> str:
+    # use mtime to differentiate updated target files with the same nane
+    mtime = int(os.path.getmtime(full_fname))
+    return base_fname + '.' + str(mtime)
 
 def fillActorClass(actor_id):
     dir = getActorDir(actor_id)
@@ -23,11 +29,8 @@ def fillActorClass(actor_id):
             'hasSkip': os.path.exists(os.path.join(dir, 'skip.txt')),
             'hasWish': os.path.exists(os.path.join(dir, 'wish.txt')),
         }
-    # target.png caching
-    # use mtime to preserve the timestamp from the source, not the copy
     if actor['hasTarget']:
-        mtime = int(os.path.getmtime(target_fullfname))
-        actor['target'] = f'target.png.{mtime}'
+        actor['target'] = getTargetCacheKey('target.png', target_fullfname)
 
     return actor
 
@@ -54,7 +57,7 @@ def index():
 
     actors.sort(key=lambda a: a['name'].lower())
     return render_template(f'{request.blueprint}/index.html',
-        actors=actors, counts=counts)
+        actors=actors, counts=counts, paused=main.pauseMainThread.paused)
 
 @bp.route('/<actor_id>/portrait')
 def actorPortrait(actor_id):
@@ -73,11 +76,11 @@ def actorPortrait(actor_id):
 @bp.route('/<actor_id>/taskimg/<fname>')
 def actorTaskImg(actor_id, fname):
     dir = getActorDir(actor_id)
-    # target.png has the a numeric suffix to allow caching
-    if fname and fname[-4:] != '.png':
-        fname = 'target.png'
 
-    full_fname = os.path.join(dir, (fname or '###'))
+    # Filenames may have a numeric suffix to allow caching (target.png.1698842042)
+    fname = fname[:fname.find('.png')+4]
+
+    full_fname = os.path.join(dir, fname)
     if os.path.exists(full_fname):
         resp = send_file(full_fname, mimetype='image/png')
         resp.cache_control.no_cache = None
@@ -104,10 +107,15 @@ def actorHandleTasksPost(actor_id):
 
     # Change task target
     settask = request.values.get('settask')
-    if settask and not settask.startswith('target.png'):
-        target = os.path.join(dir, 'target.png')
-        os.remove(target)
-        shutil.copy2(os.path.join(dir, settask), target)
+    if settask:
+        settask = settask[:settask.find('.png')+4]
+        if settask != 'target.png':
+            target = os.path.join(dir, 'target.png')
+            try:
+                os.remove(target)
+            except FileNotFoundError:
+                pass
+            shutil.copy2(os.path.join(dir, settask), target)
 
     return redirect(request.url)
 
@@ -134,8 +142,7 @@ def actorTasks(actor_id):
             continue
         if not srch.match(entry):
             continue
-        if entry == 'target.png':
-            entry = actor['target']
+        entry = getTargetCacheKey(entry, entryfull)
         tasks.append(entry)
 
     # Scraped from wiki
