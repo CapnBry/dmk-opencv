@@ -163,8 +163,8 @@ def parseActor(local_id, remote_id, r):
     soup = bs4.BeautifulSoup(r, 'html.parser')
     tables = soup('table', class_='article-table')
     # LevelUps, Activities, EventActivities, [LevelUps Release Event]
-    if not len(tables) in [3, 4]:
-        raise Exception(f'Character tables != 3,4 ({len(tables)})')
+    if len(tables) < 3:
+        raise Exception(f'Character tables < 3 ({len(tables)})')
 
     print(f'Parsing levelups')
     levelups = parseLevelUps(tables[0])
