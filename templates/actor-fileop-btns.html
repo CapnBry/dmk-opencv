@@ -1,0 +1,22 @@
+<button class="btn px-2 {{ 'btn-warning' if a.hasWish else 'btn-secondary' }}" name="wish" value="{{ '0' if a.hasWish else '1' }}" type="submit" title="Wish">
+    <i class="fa fa-birthday-cake"></i>
+</button>
+<button class="btn px-2 {{ 'btn-warning' if a.hasSkip else 'btn-secondary' }}" name="skip" value="{{ '0' if a.hasSkip else '1' }}" type="submit" title="Skip">
+    <i class="fa fa-forward"></i>
+</button>
+<button class="btn px-2 {{ 'btn-danger' if a.hasPause else 'btn-secondary' }}" name="pause" value="{{ '0' if a.hasPause else '1' }}" type="submit" title="Pause">
+    <i class="fa fa-pause"></i>
+</button>
+<button class="btn px-2 {{ 'btn-warning' if a.hasKq else 'btn-secondary' }}" name="kq" value="{{ '0' if a.hasKq else '1' }}" type="submit" title="Kingdom Quest">
+    <i class="fa fa-shield"></i>
+</button>
+<button class="btn px-2 {{ 'btn-warning' if a.hasEq else 'btn-secondary' }}" name="eq" value="{{ '0' if a.hasEq else '1' }}" type="submit" title="Event Quest">
+    <i class="fa fa-file-text-o"></i>
+</button>
+<button class="btn px-2 {{ 'btn-warning' if a.hasClip else 'btn-secondary' }}" name="clip" value="{{ '0' if a.hasClip else '1' }}" type="submit" title="Clip All">
+    <i class="fa fa-refresh"></i>
+</button>
+<!-- <button class="btn px-2 {{ 'btn-danger' if a.hasForce else 'btn-secondary' }}" name="force" value="{{ '0' if a.hasForce else '1' }}" type="submit">Force</button> -->
+<!-- <button class="btn px-2 btn-secondary" type="submit">
+    <i class="fa fa-refresh btn-secondary"></i>
+</button> -->

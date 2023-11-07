@@ -9,11 +9,11 @@
     <div class="row align-items-start justify-content-between">
         <div class="col-8">
             {{actors|length}} total actors,
-            {{counts['Wish']}} wish{{'es' if counts['Wish'] > 1 else ''}} pending
-            {%- if counts['Eq'] > 0 %}, <span class="text-warning fw-bold">{{counts['Eq']}} Event Quest</span>{% endif %}
-            {%- if counts['Kq'] > 0 %}, <span class="text-warning fw-bold">{{counts['Kq']}} Kingdom Quest</span>{% endif %}
-            {%- if counts['Skip'] > 0 %}, <span class="text-warning fw-bold">{{counts['Skip']}} skip</span>{% endif %}
-            {%- if counts['Abort'] > 0 %}, <span class="text-danger fw-bold">{{counts['Abort']}} abort</span>{% endif %}
+            {{counts['Wish']}} <i class="fa fa-birthday-cake"></i> (wish{{'es' if counts['Wish'] != 1 else ''}}) pending
+            {%- if counts['Kq'] > 0 %}, <span class="text-warning fw-bold">{{counts['Kq']}} <i class="fa fa-shield"></i> (Kingdom Quest)</span>{% endif %}
+            {%- if counts['Eq'] > 0 %}, <span class="text-warning fw-bold">{{counts['Eq']}} <i class="fa fa-file-text-o"></i> (Event Quest)</span>{% endif %}
+            {%- if counts['Skip'] > 0 %}, <span class="text-warning fw-bold">{{counts['Skip']}} <i class="fa fa-forward"></i> (skip)</span>{% endif %}
+            {%- if counts['Pause'] > 0 %}, <span class="text-danger fw-bold">{{counts['Pause']}} <i class="fa fa-pause"></i> (pause)</span>{% endif %}
         </div>
         <div class="col-2">
             <form action="{{ url_for('main.index') }}" method="POST">
@@ -40,17 +40,8 @@
             <a id="{{a.id}}"></a>
             <h4>{{a.name}}</h4>
             <form action="{{ url_for('actors.index', _anchor=a.name) }}" method="POST">
-                <input type="hidden" name="actor" value="{{a.name}}"/>
-                <button class="btn px-2 {{ 'btn-warning' if a.hasWish else 'btn-secondary' }}" name="wish" value="{{ '0' if a.hasWish else '1' }}" type="submit">Wish</button>
-                <button class="btn px-2 {{ 'btn-warning' if a.hasSkip else 'btn-secondary' }}" name="skip" value="{{ '0' if a.hasSkip else '1' }}" type="submit">Skip</button>
-                <button class="btn px-2 {{ 'btn-danger' if a.hasAbort else 'btn-secondary' }}" name="abort" value="{{ '0' if a.hasAbort else '1' }}" type="submit">Abort</button>
-                <button class="btn px-2 {{ 'btn-warning' if a.hasKq else 'btn-secondary' }}" name="kq" value="{{ '0' if a.hasKq else '1' }}" type="submit" title="Kingdom Quest">
-                    <i class="fa fa-shield"></i>
-                </button>
-                <button class="btn px-2 {{ 'btn-warning' if a.hasEq else 'btn-secondary' }}" name="eq" value="{{ '0' if a.hasEq else '1' }}" type="submit" title="Event Quest">
-                    <i class="fa fa-file-text-o"></i>
-                </button>
-            <!-- <button class="btn px-2 {{ 'btn-danger' if a.hasForce else 'btn-secondary' }}" name="force" value="{{ '0' if a.hasForce else '1' }}" type="submit">Force</button> -->
+                <input type="hidden" name="actor_id" value="{{a.id}}"/>
+                {% include "actor-fileop-btns.html" %}
             </form>
         </td>
         <td>

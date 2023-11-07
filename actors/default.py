@@ -5,6 +5,7 @@ import glob
 import re
 import numpy as np
 import cv2 as cv
+import app.main.main as main
 from colorama import Fore, Back, Style
 
 def clickGo(grabber, bounds, loc):
@@ -19,7 +20,7 @@ def clickGo(grabber, bounds, loc):
             return
         grabber.log('ACT', f'{Fore.YELLOW}Click did not register{Fore.WHITE}. Found {maxloc}={maxval:0.3f}')
 
-def abortSpam(grabber, fname):
+def pauseSpam(grabber, fname):
     # Get any reason from the file
     with open(fname, 'r') as f:
         reason = f.read()
@@ -29,12 +30,12 @@ def abortSpam(grabber, fname):
     grabber.log('ACT', Fore.YELLOW +
         '\n***********************************************************\n' +
         '*                                                         *\n' +
-        f'* ABORT: {reason:<49}*\n' +
+        f'* PAUSE: {reason:<49}*\n' +
         '*                                                         *\n' +
         '***********************************************************\n' +
         Fore.WHITE)
 
-    sys.exit(0)
+    main.pauseMainThread.paused = True
 
 def clipOneTask(grabber, bounds):
     item = grabber.grab(bounds=bounds, color=True)
@@ -126,9 +127,10 @@ def assignTask(actor, grabber, forceTask=None) -> bool:
         grabber.click(1390, 102, interval=0.5)
         return True
 
-    # Abort
-    if os.path.exists(os.path.join(path_base, 'abort.txt')):
-        abortSpam(grabber, os.path.join(path_base, 'abort.txt')) # exits
+    # Pause
+    if os.path.exists(os.path.join(path_base, 'pause.txt')):
+        pauseSpam(grabber, os.path.join(path_base, 'pause.txt'))
+        return False
 
     # Bounds of the task area, first 2 items only
     bounds = (864, 166, 1396, 492)

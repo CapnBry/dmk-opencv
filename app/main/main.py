@@ -20,8 +20,8 @@ STANDALONE_CLICKS = [
     'magic',
     'happy',
     'attract',
-    'catbasket',
-    'catmilk',
+    #'catbasket',
+    #'catmilk',
     # Static items
     'close-novideo',
     #'free',
@@ -53,7 +53,7 @@ PERIODIC_CLICKS = [
     'watchad-magic',
     'quest-end-reward',
     'striking-gold', # popup when event starts
-    'aristo-tickle',
+    #'aristo-tickle',
     'close-missed-ad',
     'close-chestmenu', # chestmenu and charactermenu (should come last!)
 ]
@@ -428,7 +428,7 @@ def actorCheckNew(grabber):
 
     if isNew:
         # New actor! Create a directory for them with their portrait
-        newdir = os.path.join('actors', f'{name}_NEW')
+        newdir = os.path.join('actors', name)
         if not os.path.exists(newdir):
             os.mkdir(newdir)
             cv.imwrite(os.path.join(newdir, 'actor.png'), img_portrait)
@@ -436,6 +436,8 @@ def actorCheckNew(grabber):
                 pass
             # Reload the list of actors
             actorsCheckAssign.actors = actorsLoad(grabber)
+        else:
+            grabber.log('ACT', f'{Fore.RED}Directory exists{Fore.WHITE}, not creating actor')
 
     # Click the close button on the actor's window
     grabber.click(1388, 100, interval=0.067)
@@ -498,8 +500,8 @@ def actorsLoad(grabber):
             if os.path.exists(stale_force_fname):
                 grabber.log('ACT', f'{Fore.YELLOW}Removing stale force.txt for {Fore.WHITE}{a}')
                 os.remove(stale_force_fname)
-            if os.path.exists(os.path.join(dir, a, 'abort.txt')):
-                grabber.log('ACT', f'{Fore.YELLOW}WARNING:{Fore.WHITE} {a} has abort.txt')
+            if os.path.exists(os.path.join(dir, a, 'pause.txt')):
+                grabber.log('ACT', f'{Fore.YELLOW}WARNING:{Fore.WHITE} {a} has pause.txt')
     grabber.log('ACT', f'Loaded {len(retVal)} actors')
     return retVal
 

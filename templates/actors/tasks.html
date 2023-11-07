@@ -10,22 +10,7 @@
         </div>
         <div class="col">
             <div class="py-1">
-                    <button class="btn px-4 {{ 'btn-warning' if a.hasWish else 'btn-secondary' }}" name="wish" value="{{ '0' if a.hasWish else '1' }}" type="submit">Wish</button>
-                    <button class="btn px-4 {{ 'btn-warning' if a.hasSkip else 'btn-secondary' }}" name="skip" value="{{ '0' if a.hasSkip else '1' }}" type="submit">Skip</button>
-                    <button class="btn px-4 {{ 'btn-danger' if a.hasAbort else 'btn-secondary' }}" name="abort" value="{{ '0' if a.hasAbort else '1' }}" type="submit">Abort</button>
-                    <button class="btn px-2 {{ 'btn-warning' if a.hasKq else 'btn-secondary' }}" name="kq" value="{{ '0' if a.hasKq else '1' }}" type="submit" title="Kingdom Quest">
-                        <i class="fa fa-shield"></i>
-                    </button>
-                    <button class="btn px-2 {{ 'btn-warning' if a.hasEq else 'btn-secondary' }}" name="eq" value="{{ '0' if a.hasEq else '1' }}" type="submit" title="Event Quest">
-                        <i class="fa fa-file-text-o"></i>
-                    </button>
-                    <button class="btn px-2 {{ 'btn-warning' if a.hasClip else 'btn-secondary' }}" name="clip" value="{{ '0' if a.hasClip else '1' }}" type="submit" title="Clip All">
-                        <i class="fa fa-refresh"></i>
-                    </button>
-                    <!-- <button class="btn px-4 {{ 'btn-danger' if a.hasForce else 'btn-secondary' }}" name="force" value="{{ '0' if a.hasForce else '1' }}" type="submit">Force</button> -->
-                    <!-- <button class="btn px-2 btn-secondary" type="submit">
-                        <i class="fa fa-refresh btn-secondary"></i>
-                    </button> -->
+                {% include "actor-fileop-btns.html" %}
             </div>
             <div><a href="{{ url_for('actors.index', _anchor=a.id) }}">Return to list</a></div>
         </div>

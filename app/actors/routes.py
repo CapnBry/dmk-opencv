@@ -21,11 +21,11 @@ def fillActorClass(actor_id):
             'id': actor_id,
             'name': actor_id,
             'hasTarget': os.path.exists(target_fullfname),
-            'hasAbort': os.path.exists(os.path.join(dir, 'abort.txt')),
             'hasClip': os.path.exists(os.path.join(dir, 'clip.txt')),
             'hasEq': os.path.exists(os.path.join(dir, 'eq.txt')),
             'hasForce': os.path.exists(os.path.join(dir, 'force.txt')),
             'hasKq': os.path.exists(os.path.join(dir, 'kq.txt')),
+            'hasPause': os.path.exists(os.path.join(dir, 'pause.txt')),
             'hasSkip': os.path.exists(os.path.join(dir, 'skip.txt')),
             'hasWish': os.path.exists(os.path.join(dir, 'wish.txt')),
         }
@@ -37,7 +37,7 @@ def fillActorClass(actor_id):
 @bp.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        return actorHandleTasksPost(request.values.get('actor', type=str))
+        return actorHandleTasksPost(request.values.get('actor_id', type=str))
 
     actors = []
     counts = {}
@@ -49,7 +49,7 @@ def index():
             actor = fillActorClass(a)
 
             # Running total for summary
-            for item in ['Target', 'Abort', 'Clip', 'Eq', 'Force', 'Kq', 'Skip', 'Wish']:
+            for item in ['Target', 'Pause', 'Clip', 'Eq', 'Force', 'Kq', 'Skip', 'Wish']:
                 item_full = f'has{item}'
                 counts[item] = counts.get(item, 0) + (1 if actor[item_full] else 0)
 
@@ -93,7 +93,7 @@ def actorTaskImg(actor_id, fname):
 def actorHandleTasksPost(actor_id):
     dir = getActorDir(actor_id)
     # Look for action file create/delete
-    for item in ['abort', 'clip', 'eq', 'force', 'kq', 'skip', 'wish']:
+    for item in ['clip', 'eq', 'force', 'kq', 'pause', 'skip', 'wish']:
         ival = request.values.get(item)
         if not ival:
             continue
@@ -190,9 +190,9 @@ def actorFileOp(actor_id, fname):
 def actorSkip(actor_id):
     return actorFileOp(actor_id, 'skip.txt')
 
-@bp.route('/<actor_id>/abort')
-def actorAbort(actor_id):
-    return actorFileOp(actor_id, 'abort.txt')
+@bp.route('/<actor_id>/pause')
+def actorPause(actor_id):
+    return actorFileOp(actor_id, 'pause.txt')
 
 @bp.route('/<actor_id>/wish')
 def actorWish(actor_id):
