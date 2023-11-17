@@ -45,9 +45,9 @@
             let dir = parseInt(this.id.substr(-1));
             let amt;
             if ([0, 2].includes(dir))
-                amt = 1200;
+                amt = 1200;  // left/right
             else
-                amt = 490;
+                amt = 510; // up/down
             ssAction("{{ url_for('main.drag') }}", {dir, amt});
         }
 

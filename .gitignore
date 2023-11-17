@@ -8,6 +8,7 @@ actors/*/*.txt
 actors/*/actor.json
 actors/*/actor.html
 events/*/*.png
+events/hascheck.png
 images/
 prototyping/
 __pycache__/

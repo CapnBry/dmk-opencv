@@ -20,6 +20,7 @@ STANDALONE_CLICKS = [
     'magic',
     'happy',
     'attract',
+    'complete-tower',
     #'catbasket',
     #'catmilk',
     # Static items

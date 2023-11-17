@@ -68,7 +68,7 @@ def actorPortrait(actor_id):
             resp = send_file(fname, mimetype='image/png')
             resp.cache_control.no_cache = None
             resp.cache_control.public = True
-            resp.cache_control.max_age = (60 * 60 * 24 * 7)
+            resp.cache_control.max_age = (60 * 60 * 24 * 7) if k == 'folder.png' else 60
             return resp
 
     return redirect(url_for('static', filename='actor_unknown.png'))
@@ -103,7 +103,10 @@ def actorHandleTasksPost(actor_id):
                 f.write(repr(request))
                 pass
         elif ival == "0":
-            os.remove(fname)
+            try:
+                os.remove(fname)
+            except FileNotFoundError:
+                pass
 
     # Change task target
     settask = request.values.get('settask')
