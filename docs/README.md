@@ -1,0 +1,1 @@
+Nope, no docs other than the code. See the main README for all information.
