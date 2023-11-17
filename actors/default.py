@@ -37,11 +37,20 @@ def pauseSpam(grabber, fname):
 
     main.pauseMainThread.paused = True
 
+img_wish = None
 def clipOneTask(grabber, bounds):
     item = grabber.grab(bounds=bounds, color=True)
     # cv.imshow('Result', item)
     # cv.waitKey(2000)
     item_gray = cv.cvtColor(item, cv.COLOR_BGR2GRAY)
+
+    # If there is a wish icon, shift the clipped item over to remove it
+    global img_wish
+    _, maxval, _ = grabber.search(item_gray, img_wish)
+    if maxval > 0.85:
+        item = item[:, 43:]
+        item_gray = item_gray[:, 43:]
+
     #_, item_gray = cv.threshold(item_gray, 127, 255, cv.THRESH_BINARY)
     # cv.imshow('Result', item_gray)
     # cv.waitKey(3000)
@@ -51,12 +60,17 @@ def clipOneTask(grabber, bounds):
 
     # clip off the end of the search image
     item = item[:, 0:250]
-    # clip off the start of the gray image so it won't have any icon
+    # clip off the start of the gray image so it won't have any actor icon
     item_gray = item_gray[:, 44:]
     # cv.imshow('Result', item_gray)
     # cv.waitKey(2000)
 
     return item, item_gray, item_text
+
+def clipOneTaskInit():
+    global img_wish
+    if img_wish is None:
+        img_wish = cv.imread('images/clip-wish.png', cv.IMREAD_GRAYSCALE)
 
 def deleteFilesGlob(pattern):
     for f in glob.glob(pattern):
@@ -64,6 +78,7 @@ def deleteFilesGlob(pattern):
 
 def clipAllTasks(grabber, dest_path):
     deleteFilesGlob(os.path.join(dest_path, 'target-auto-??.png'))
+    clipOneTaskInit()
 
     bounds_first = (896, 186, 896+405, 186+29)
     bounds_second = (bounds_first[0], bounds_first[1]+172, bounds_first[2], bounds_first[3]+172)
@@ -107,7 +122,7 @@ def clipAllTasks(grabber, dest_path):
             break
 
         grabber.scroll(-423, bounds_first[0]-50, bounds_first[1])
-        time.sleep(0.033)
+        time.sleep(0.200) # need plenty of time between imwrites so be generous here
         taskIdx += 1
         lastGrab = item_gray
 
