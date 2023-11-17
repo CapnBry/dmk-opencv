@@ -1,4 +1,4 @@
-An OpenCV automation bot for controlling the mobile game Disney's Magic Kingdoms through the Windows Store version of the app. The "keyboard hint" graphics option must be on for the bot to assign tasks properly.
+An OpenCV automation bot for controlling the mobile game Disney's Magic Kingdoms through the Windows Store version of the app. This project is not in active development. The "keyboard hint" graphics option must be on for the bot to assign tasks properly, and the game must be run in windowed mode zoomed out as far as possible.
 
 ![Webui Index Screenshot](docs/webui-index.jpg)
 
